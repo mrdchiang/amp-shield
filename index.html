@@ -1760,6 +1760,7 @@ function renderTeamDetail() {
       <button class="tab" onclick="switchTab(this,'team-solutions')">Solutions</button>
       <button class="tab" onclick="switchTab(this,'team-findings')">Top Findings</button>
       <button class="tab" onclick="switchTab(this,'team-products')">Products</button>
+      <button class="tab" onclick="switchTab(this,'team-packages')">Packages</button>
     </div>
     <div id="tab-team-assets" class="card" style="display:block">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1794,7 +1795,48 @@ function renderTeamDetail() {
         <tr><td>Red Hat Enterprise Linux</td><td class="mono">203</td><td style="color:var(--critical)">${Math.floor(t.critical*0.17)}</td><td style="color:var(--high)">${Math.floor(t.high*0.17)}</td><td style="color:var(--danger)">↑ 4</td></tr>
         <tr><td>Other (3 more)</td><td class="mono" style="color:var(--text-muted)">268</td><td style="color:var(--critical)">${Math.floor(t.critical*0.25)}</td><td style="color:var(--high)">${Math.floor(t.high*0.15)}</td><td style="color:var(--text-muted)">—</td></tr>
       </tbody></table>
-    </div>`;
+    </div>
+    <div id="tab-team-packages" class="card" style="display:none">
+      <table><thead><tr><th>Package</th><th>Findings</th><th>Assets</th><th>Critical</th><th>High</th><th>KEV</th><th>Top CVE</th></tr></thead><tbody>
+        ${(() => {
+          const tf = FINDINGS.filter(f => f.state === 'Active' && t.assets_list.some(a => a.name === f.asset));
+          const pkg = {};
+          tf.forEach(f => {
+            let n = 'Other'; const c = f.check.toLowerCase();
+            if (c.includes('log4j')) n = 'Apache Log4j';
+            else if (c.includes('print spooler')) n = 'Windows Print Spooler';
+            else if (c.includes('openssl') || c.includes('tls cert')) n = 'OpenSSL';
+            else if (c.includes('exchange')) n = 'Microsoft Exchange';
+            else if (c.includes('smbv3') || c.includes('smb ')) n = 'Windows SMB';
+            else if (c.includes('kerberos')) n = 'Windows Kerberos';
+            else if (c.includes('linux kernel') || c.includes('netfilter')) n = 'Linux Kernel';
+            else if (c.includes('postgresql')) n = 'PostgreSQL';
+            else if (c.includes('tomcat')) n = 'Apache Tomcat';
+            else if (c.includes('node')) n = 'Node.js';
+            else if (c.includes('nginx') || c.includes('quic')) n = 'nginx';
+            else if (c.includes('vmware') || c.includes('vcenter')) n = 'VMware vCenter';
+            else if (c.includes('cisco') || c.includes('ios xe')) n = 'Cisco IOS XE';
+            else if (c.includes('safari') || c.includes('webkit')) n = 'Safari / WebKit';
+            else if (c.includes('macos kernel') || c.includes('iokit')) n = 'macOS Kernel';
+            else if (c.includes('gatekeeper') || c.includes('xprotect')) n = 'macOS Gatekeeper';
+            else if (c.includes('365') || c.includes('ms365') || c.includes('office for mac')) n = 'Microsoft 365';
+            else if (c.includes('jamf')) n = 'Jamf Pro';
+            if (!pkg[n]) pkg[n] = {f:0,a:new Set(),cr:0,hi:0,k:false,t:''};
+            pkg[n].f++; pkg[n].a.add(f.asset);
+            if (f.severity === 'Critical') pkg[n].cr++;
+            if (f.severity === 'High') pkg[n].hi++;
+            if (f.kev) pkg[n].k = true;
+            if (!pkg[n].t) pkg[n].t = f.cve;
+          });
+          return Object.entries(pkg).sort((a,b) => b[1].f - a[1].f).map(([n, p]) => `<tr>
+            <td><strong>${n}</strong></td><td class="mono">${p.f}</td><td class="mono">${p.a.size}</td>
+            <td style="color:var(--critical)">${p.cr || '—'}</td><td style="color:var(--high)">${p.hi || '—'}</td>
+            <td>${p.k?'<span style="color:var(--danger)">⚠ KEV</span>':'—'}</td>
+            <td class="mono" style="font-size:12px;color:var(--text-muted)">${p.t}</td></tr>`).join('');
+        })()}
+      </tbody></table>
+    </div>
+  `;
 }
 
 function getTeamTopFindings() {
