@@ -1479,6 +1479,7 @@ function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navItem = document.querySelector(`[data-page="${page}"]`);
   if (navItem) navItem.classList.add('active');
+  setActiveNav(page);
 
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('content').scrollTop = 0;
@@ -1488,7 +1489,10 @@ function navigateTo(page) {
   if (page === 'asset-detail') renderAssetDetail();
   if (page === 'assets') renderAssetsPage();
   if (page === 'recently-fixed') renderRecentlyFixed();
-  if (page === 'dashboard') renderFindingsTable();
+  if (page === 'dashboard') {
+    renderFindingsTable();
+    updateDashboardStats();
+  }
 }
 
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -1497,6 +1501,16 @@ document.querySelectorAll('.nav-item').forEach(item => {
     if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
   });
 });
+
+// Update nav active state for sub-pages
+function setActiveNav(page) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  // Map sub-pages to their parent nav
+  const parentMap = { 'teams-detail': 'teams', 'asset-detail': 'assets', 'cve-detail': 'cve-detail' };
+  const navPage = parentMap[page] || page;
+  const navItem = document.querySelector(`[data-page="${navPage}"]`);
+  if (navItem) navItem.classList.add('active');
+}
 
 // ===== RENDER TEAM DETAIL =====
 function renderTeamDetail() {
@@ -1657,6 +1671,38 @@ function toggleWatchStar(el) {
 
   watchState[cveId] = !watchState[cveId];
   el.textContent = watchState[cveId] ? '★' : '☆';
+}
+
+// ===== UPDATE DASHBOARD STATS FROM REAL DATA =====
+function updateDashboardStats() {
+  const active = FINDINGS.filter(f => f.state === 'Active');
+  const critical = active.filter(f => f.severity === 'Critical');
+  const high = active.filter(f => f.severity === 'High');
+  const medium = active.filter(f => f.severity === 'Medium');
+  const low = active.filter(f => f.severity === 'Low');
+  const kev = active.filter(f => f.kev);
+  const distinct = [...new Set(active.map(f => f.cve))];
+  const aged = active.filter(f => f.firstSeen < '2026-03-28');
+  const unactioned = active.length;
+  const watched = Object.keys(watchState).filter(c => watchState[c]).length;
+
+  const cards = document.querySelectorAll('#page-dashboard .stat-card .stat-value');
+  if (cards.length >= 8) {
+    cards[0].textContent = active.length.toLocaleString();
+    cards[1].textContent = critical.length;
+    cards[2].textContent = high.length;
+    cards[3].textContent = medium.length;
+    cards[4].textContent = low.length;
+    cards[5].textContent = aged.length;
+    cards[6].textContent = unactioned;
+    cards[7].textContent = watched;
+  }
+  const subs = document.querySelectorAll('#page-dashboard .stat-card .stat-sub');
+  if (subs.length >= 8) {
+    subs[0].textContent = `${distinct.length} distinct CVEs`;
+    subs[1].textContent = `${kev.filter(f=>f.severity==='Critical').length} exploited (KEV)`;
+    subs[2].textContent = `${kev.filter(f=>f.severity==='High').length} exploited (KEV)`;
+  }
 }
 
 // ===== RENDER FINDINGS TABLE =====
