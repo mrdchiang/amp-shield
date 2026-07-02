@@ -1656,8 +1656,32 @@ function renderExecutivePage() {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title" style="margin-bottom:16px">KEV Exploited Vulnerabilities — CISA Catalog</div>
+    <div class="cols" style="margin-top:8px">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Disposition Summary — Active Findings</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${(() => {
+            const counts = {};
+            active.forEach(f => { counts[f.disposition] = (counts[f.disposition] || 0) + 1; });
+            return Object.entries(DISPOSITIONS).map(([name, d]) => {
+              const count = counts[name] || 0;
+              const pct = total > 0 ? (count / total * 100).toFixed(1) : '0';
+              return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+                <div style="width:10px;height:10px;border-radius:2px;background:${d.color};flex-shrink:0"></div>
+                <span style="font-size:13px;flex:1">${d.label}</span>
+                <span style="font-size:13px;font-weight:600;color:${d.color};min-width:24px;text-align:right">${count}</span>
+                <div style="width:80px;height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${d.color};border-radius:3px"></div>
+                </div>
+                <span style="font-size:11px;color:var(--text-muted);min-width:36px;text-align:right">${pct}%</span>
+              </div>`;
+            }).join('');
+          })()}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">KEV Exploited Vulnerabilities — CISA Catalog</div>
       <table>
         <thead><tr><th>CVE</th><th>Title</th><th>Assets</th><th>Severity</th><th>Ransomware</th><th>Due Date</th></tr></thead>
         <tbody>
@@ -1675,6 +1699,7 @@ function renderExecutivePage() {
           }).join('')}
         </tbody>
       </table>
+    </div>
     </div>
   `;
 }
