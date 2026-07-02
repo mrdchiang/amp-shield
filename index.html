@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AmpShield — Vulnerability Management</title>
+<style>
+/* ===== DESIGN TOKENS — Ampere-themed ===== */
+:root {
+  --bg-root: #060b18;
+  --bg-surface: #0c1225;
+  --bg-elevated: #111830;
+  --bg-hover: #182040;
+  --bg-sidebar: #080e1c;
+  --border: #1a2540;
+  --border-light: #243055;
+  --text-primary: #e8ecf4;
+  --text-secondary: #8899bb;
+  --text-muted: #556888;
+  --accent: #0066ff;
+  --accent-dim: #0052cc;
+  --accent-glow: rgba(0,102,255,0.25);
+  --critical: #ff4444;
+  --critical-bg: #351520;
+  --high: #ff7722;
+  --high-bg: #352215;
+  --medium: #e6b800;
+  --medium-bg: #353015;
+  --low: #22cc66;
+  --low-bg: #123020;
+  --info: #00aacc;
+  --info-bg: #102830;
+  --success: #22cc66;
+  --warning: #ff9900;
+  --danger: #ff4444;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+}
+
+[data-theme="light"] {
+  --bg-root: #f0f2f8;
+  --bg-surface: #ffffff;
+  --bg-elevated: #f5f7fc;
+  --bg-hover: #eef1f8;
+  --bg-sidebar: #e8ecf4;
+  --border: #d8dde8;
+  --border-light: #e8ecf4;
+  --text-primary: #0c1225;
+  --text-secondary: #556888;
+  --text-muted: #8899bb;
+  --accent: #0052cc;
+  --accent-dim: #003d99;
+  --critical-bg: #fff0f0;
+  --high-bg: #fff4ee;
+  --medium-bg: #fffbe6;
+  --low-bg: #eefff4;
+  --info-bg: #ecfaff;
+}
+
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-root);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font-family: inherit; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 600; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+th, td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--bg-hover); }
+td { font-size: 13px; }
+
+/* ===== LAYOUT ===== */
+.app { display: flex; height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  z-index: 10;
+  transition: width 0.2s;
+}
+.sidebar.collapsed { width: 56px; }
+.sidebar-brand {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  height: var(--topbar-h);
+  flex-shrink: 0;
+}
+.sidebar-brand .logo { width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0; box-shadow: 0 0 12px var(--accent-glow); }
+.sidebar-brand .title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; }
+.sidebar.collapsed .title { display: none; }
+.sidebar-nav { padding: 12px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sidebar-nav .section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 12px 12px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar.collapsed .section-label { display: none; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); text-decoration: none; }
+.nav-item.active { background: var(--accent); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+.nav-item .icon { width: 20px; text-align: center; flex-shrink: 0; font-size: 15px; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 10px; }
+.sidebar.collapsed .nav-item span:not(.icon) { display: none; }
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-footer .avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: #fff;
+  flex-shrink: 0;
+}
+.sidebar-footer .user-info { font-size: 12px; line-height: 1.3; }
+.sidebar-footer .user-name { font-weight: 600; }
+.sidebar-footer .user-role { color: var(--text-muted); font-size: 11px; }
+.sidebar.collapsed .sidebar-footer { justify-content: center; }
+.sidebar.collapsed .user-info { display: none; }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Topbar */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.topbar .hamburger {
+  background: none; border: none; color: var(--text-secondary); font-size: 18px;
+  padding: 4px; border-radius: var(--radius-sm);
+}
+.topbar .hamburger:hover { background: var(--bg-hover); color: var(--text-primary); }
+.topbar .page-title { font-size: 18px; font-weight: 700; }
+.topbar .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.theme-toggle {
+  background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text-secondary); padding: 6px 10px; font-size: 15px;
+}
+.theme-toggle:hover { color: var(--text-primary); border-color: var(--border-light); }
+
+/* Content */
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ===== COMPONENTS ===== */
+
+/* Stat cards */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.stat-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.stat-card .stat-value { font-size: 32px; font-weight: 700; line-height: 1.1; }
+.stat-card .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.stat-card .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.stat-card.critical .stat-value { color: var(--critical); }
+.stat-card.high .stat-value { color: var(--high); }
+.stat-card.medium .stat-value { color: var(--medium); }
+.stat-card.low .stat-value { color: var(--low); }
+.stat-card.accent { border-left: 3px solid var(--accent); }
+
+/* Badge */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+  white-space: nowrap;
+}
+.badge-critical { background: var(--critical-bg); color: var(--critical); }
+.badge-high { background: var(--high-bg); color: var(--high); }
+.badge-medium { background: var(--medium-bg); color: var(--medium); }
+.badge-low { background: var(--low-bg); color: var(--low); }
+.badge-info { background: var(--info-bg); color: var(--info); }
+.badge-neutral { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* Cards */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 15px; font-weight: 700; }
+.card-actions { display: flex; gap: 8px; }
+
+/* Buttons */
+.btn {
+  padding: 7px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-ghost { background: none; border-color: transparent; }
+.btn-ghost:hover { background: var(--bg-hover); border-color: var(--border); }
+
+/* Input */
+.input {
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-elevated);
+  color: var(--text-primary); font-size: 13px; font-family: inherit;
+  outline: none; transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--text-muted); }
+select.input { cursor: pointer; }
+
+/* Filters bar */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+
+/* Tabs */
+.tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+.tab {
+  padding: 9px 16px; font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); border: none; background: none;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: all 0.15s;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Row clickable */
+.clickable { cursor: pointer; }
+.clickable:hover { color: var(--accent); }
+
+/* Link-like text */
+.text-link { color: var(--accent); cursor: pointer; }
+.text-link:hover { text-decoration: underline; }
+
+/* Monospace */
+.mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* Donut chart */
+.donut-wrap { display: flex; align-items: center; gap: 24px; }
+.donut-legend { display: flex; flex-direction: column; gap: 8px; }
+.donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.donut-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.donut-legend-val { font-weight: 600; margin-left: auto; }
+
+/* Two-col layout */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+/* Team cards */
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.team-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.15s;
+}
+.team-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.team-card .team-name { font-size: 16px; font-weight: 700; }
+.team-card .team-desc { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.team-card .team-stats { display: flex; gap: 16px; margin-top: 12px; }
+.team-stat { text-align: center; }
+.team-stat-val { font-size: 20px; font-weight: 700; }
+.team-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+/* KPI strip */
+.kpi-strip { display: flex; gap: 16px; margin-bottom: 24px; }
+.kpi-item {
+  flex: 1; background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 20px; text-align: center;
+}
+.kpi-value { font-size: 36px; font-weight: 700; line-height: 1.1; }
+.kpi-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.kpi-delta { font-size: 12px; margin-top: 4px; }
+.kpi-delta.up { color: var(--danger); }
+.kpi-delta.down { color: var(--success); }
+
+/* Progress bar */
+.progress-bar {
+  height: 6px; background: var(--bg-hover); border-radius: 3px; overflow: hidden;
+}
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* Setup import cards */
+.import-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.import-card {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.import-card .import-icon { font-size: 24px; margin-bottom: 8px; }
+.import-card .import-name { font-weight: 700; font-size: 14px; }
+.import-card .import-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.import-card .import-status { margin-top: 10px; font-size: 12px; }
+
+/* Recently fixed list */
+.fixed-list { display: flex; flex-direction: column; gap: 2px; }
+.fixed-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+}
+.fixed-item:hover { background: var(--bg-hover); }
+.fixed-item .fixed-date { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); width: 90px; flex-shrink: 0; }
+
+/* Page visibility */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Vendor family */
+.family-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.family-row:hover { background: var(--bg-hover); }
+.family-row .family-name { font-weight: 600; font-size: 14px; }
+.family-row .family-count { font-size: 12px; color: var(--text-secondary); }
+.family-bar { width: 80px; height: 6px; border-radius: 3px; background: var(--bg-hover); overflow: hidden; flex-shrink: 0; }
+.family-bar-fill { height: 100%; border-radius: 3px; }
+
+/* Admin user list */
+.user-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.user-row .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-dim); display: flex; align-items: center; justify-content: center; font-weight: 600; color: #fff; font-size: 13px; flex-shrink: 0; }
+
+/* SVG chart containers */
+.chart-container { display: flex; align-items: center; justify-content: center; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+  animation: fadeIn 0.15s ease-out;
+  display: none;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px; max-width: 700px; width: 90%;
+  max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: slideUp 0.2s ease-out;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-title { font-size: 18px; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); }
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal pre {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px; font-family: var(--font-mono);
+  font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 20px;
+  font-size: 13px; z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  animation: slideUp 0.25s ease-out;
+  display: none;
+}
+.toast.show { display: block; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">⚡</div>
+      <span class="title">AmpShield</span>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="section-label">Overview</div>
+      <button class="nav-item active" data-page="dashboard"><span class="icon">📊</span> <span>Dashboard</span></button>
+      <button class="nav-item" data-page="executive"><span class="icon">🏛️</span> <span>Executive</span></button>
+      <div class="section-label">Vulnerabilities</div>
+      <button class="nav-item" data-page="cve-detail"><span class="icon">🔍</span> <span>CVE Detail</span></button>
+      <button class="nav-item" data-page="solutions"><span class="icon">🛠️</span> <span>Solutions</span></button>
+      <button class="nav-item" data-page="vendor"><span class="icon">📦</span> <span>Vendor / Family</span></button>
+      <button class="nav-item" data-page="recently-fixed"><span class="icon">✅</span> <span>Recently Fixed</span></button>
+      <div class="section-label">Assets & Teams</div>
+      <button class="nav-item" data-page="assets"><span class="icon">🖥️</span> <span>Assets</span></button>
+      <button class="nav-item" data-page="teams"><span class="icon">👥</span> <span>Teams</span></button>
+      <div class="section-label">Management</div>
+      <button class="nav-item" data-page="setup"><span class="icon">⚙️</span> <span>Setup & Imports</span></button>
+      <button class="nav-item" data-page="admin"><span class="icon">🔐</span> <span>Admin</span></button>
+      <button class="nav-item" data-page="changelog"><span class="icon">📝</span> <span>Changelog</span></button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">DA</div>
+      <div class="user-info">
+        <div class="user-name">David — Ampere</div>
+        <div class="user-role">Security Administrator</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+      <span class="page-title" id="pageTitle">Dashboard</span>
+      <div class="topbar-right">
+        <span style="font-size:12px;color:var(--text-muted)">Last sync: <strong>2026-06-28 06:42 UTC</strong></span>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+      </div>
+    </header>
+
+    <div class="content" id="content">
+
+      <!-- ========== DASHBOARD ========== -->
+      <div class="page active" id="page-dashboard">
+        <!-- Stat cards -->
+        <div class="stat-grid">
+          <div class="stat-card accent" onclick="dashFilters={};document.querySelector('#page-dashboard select[data-filter=severity]').value='All';renderFindingsTable('');updateStatHighlights()">
+            <div class="stat-value">3,847</div>
+            <div class="stat-label">Active Findings</div>
+            <div class="stat-sub">2,104 distinct CVEs</div>
+          </div>
+          <div class="stat-card critical" onclick="dashFilter('severity','Critical')">
+            <div class="stat-value">142</div>
+            <div class="stat-label">Critical</div>
+            <div class="stat-sub">12 exploited (KEV)</div>
+          </div>
+          <div class="stat-card high" onclick="dashFilter('severity','High')">
+            <div class="stat-value">891</div>
+            <div class="stat-label">High</div>
+            <div class="stat-sub">31 exploited (KEV)</div>
+          </div>
+          <div class="stat-card medium" onclick="dashFilter('severity','Medium')">
+            <div class="stat-value">1,624</div>
+            <div class="stat-label">Medium</div>
+            <div class="stat-sub">—</div>
+          </div>
+          <div class="stat-card low" onclick="dashFilter('severity','Low')">
+            <div class="stat-value">1,190</div>
+            <div class="stat-label">Low</div>
+            <div class="stat-sub">—</div>
+          </div>
+          <div class="stat-card" style="border-left:3px solid var(--warning)" onclick="dashFilter('state','Aged')">
+            <div class="stat-value" style="color:var(--warning)">423</div>
+            <div class="stat-label">Aged > 90 Days</div>
+            <div class="stat-sub">Across 178 assets</div>
+          </div>
+          <div class="stat-card" style="border-left:3px solid var(--danger)" onclick="dashFilter('state','Unactioned')">
+            <div class="stat-value" style="color:var(--danger)">718</div>
+            <div class="stat-label">Unactioned CVEs</div>
+            <div class="stat-sub">No triage status set</div>
+          </div>
+          <div class="stat-card" style="border-left:3px solid var(--info)" onclick="dashFilter('state','KEV')">
+            <div class="stat-value" style="color:var(--info)">86</div>
+            <div class="stat-label">Watched CVEs</div>
+            <div class="stat-sub">Under active monitoring</div>
+          </div>
+        </div>
+
+        <!-- Charts + Findings row -->
+        <div class="cols">
+          <!-- Donut -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Severity Distribution</div>
+            <div class="donut-wrap">
+              <svg width="160" height="160" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="60" fill="none" stroke="var(--bg-hover)" stroke-width="20"/>
+                <circle cx="80" cy="80" r="60" fill="none" stroke="#ef4444" stroke-width="20"
+                  stroke-dasharray="377" stroke-dashoffset="0" transform="rotate(-90 80 80)"
+                  stroke-dasharray="377" stroke-dashoffset="337"
+                  style="transition: stroke-dashoffset 0.5s"/>
+              </svg>
+              <div class="donut-legend">
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#ef4444"></span> Critical <span class="donut-legend-val">142</span></div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#f97316"></span> High <span class="donut-legend-val">891</span></div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#eab308"></span> Medium <span class="donut-legend-val">1,624</span></div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#22c55e"></span> Low <span class="donut-legend-val">1,190</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KEV bar -->
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Known Exploited Vulnerabilities (CISA KEV)</div>
+            <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:8px">
+              <div style="flex:1;text-align:center">
+                <div style="height:120px;background:var(--critical);border-radius:var(--radius-sm) 4px 4px 0;width:40px;margin:0 auto"></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Critical</div>
+                <div style="font-weight:700;font-size:14px;color:var(--critical)">12</div>
+              </div>
+              <div style="flex:1;text-align:center">
+                <div style="height:80px;background:var(--high);border-radius:4px 4px 0 0;width:40px;margin:0 auto"></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:6px">High</div>
+                <div style="font-weight:700;font-size:14px;color:var(--high)">31</div>
+              </div>
+              <div style="flex:1;text-align:center">
+                <div style="height:20px;background:var(--medium);border-radius:4px 4px 0 0;width:40px;margin:0 auto"></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Medium</div>
+                <div style="font-weight:700;font-size:14px;color:var(--medium)">5</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Findings list -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Findings</span>
+            <div class="card-actions">
+              <button class="btn btn-sm" onclick="showToast('CSV export would download filtered view')">📥 Export CSV</button>
+            </div>
+          </div>
+          <div class="filters">
+            <input class="input" placeholder="Search CVE or asset..." style="width:240px" id="dashboardSearch">
+            <select class="input" data-filter="severity" onchange="dashFilter('severity',this.value)"><option value="All">All Severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+            <select class="input"><option>All Tags</option><option>Production</option><option>Staging</option><option>DMZ</option></select>
+            <select class="input"><option>All Locations</option><option>US-East</option><option>US-West</option><option>EU-Central</option></select>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer">
+              <input type="checkbox" data-filter="groupBy" onchange="dashFilters.groupBy=this.checked;dashFilter('groupBy','')" style="accent-color:var(--accent)"> Group by check
+            </label>
+          </div>
+          <table>
+            <thead>
+              <tr><th>CVE</th><th>Check / Plugin</th><th>Asset</th><th>Port</th><th>Severity</th><th>State</th><th>KEV</th><th>First Seen</th><th>★</th></tr>
+            </thead>
+            <tbody>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-12345</td>
+                <td>Apache Log4j Remote Code Execution</td>
+                <td>WEB-PROD-03</td>
+                <td class="mono">443/tcp</td>
+                <td><span class="badge badge-critical">Critical</span></td>
+                <td><span class="badge badge-neutral">Active</span></td>
+                <td><span style="color:var(--danger)">⚠</span></td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-02-14</td>
+                <td>☆</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-11223</td>
+                <td>Windows Print Spooler Elevation</td>
+                <td>DC-PROD-01</td>
+                <td class="mono">445/tcp</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td><span class="badge badge-neutral">Active</span></td>
+                <td><span style="color:var(--danger)">⚠</span></td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-01-08</td>
+                <td>★</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-09876</td>
+                <td>OpenSSL X.509 Certificate Parsing</td>
+                <td>APP-PROD-07</td>
+                <td class="mono">8443/tcp</td>
+                <td><span class="badge badge-medium">Medium</span></td>
+                <td><span class="badge badge-neutral">Active</span></td>
+                <td></td>
+                <td style="font-size:12px;color:var(--text-muted)">2025-11-20</td>
+                <td>☆</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-04567</td>
+                <td>Linux Kernel Privilege Escalation</td>
+                <td>DB-PROD-02</td>
+                <td class="mono">22/tcp</td>
+                <td><span class="badge badge-high">High</span></td>
+                <td><span class="badge badge-neutral">Active</span></td>
+                <td></td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-03-05</td>
+                <td>☆</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-33445</td>
+                <td>Microsoft Exchange Server RCE</td>
+                <td>EXCH-PROD-01</td>
+                <td class="mono">443/tcp</td>
+                <td><span class="badge badge-critical">Critical</span></td>
+                <td><span class="badge badge-low">Fixed</span></td>
+                <td><span style="color:var(--danger)">⚠</span></td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-04-12</td>
+                <td>★</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="padding:12px;text-align:center;font-size:12px;color:var(--text-muted)">
+            Showing 5 of 3,847 findings — counts frozen between imports
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== EXECUTIVE ========== -->
+      <div class="page" id="page-executive">
+        <div class="kpi-strip">
+          <div class="kpi-item"><div class="kpi-value">3,847</div><div class="kpi-label">Total Active</div><div class="kpi-delta down">↓ 12% from last month</div></div>
+          <div class="kpi-item"><div class="kpi-value" style="color:var(--critical)">142</div><div class="kpi-label">Critical</div><div class="kpi-delta down">↓ 8% from last month</div></div>
+          <div class="kpi-item"><div class="kpi-value">2,104</div><div class="kpi-label">Distinct CVEs</div><div class="kpi-delta down">↓ 5% from last month</div></div>
+          <div class="kpi-item"><div class="kpi-value" style="color:var(--success)">87%</div><div class="kpi-label">Critical SLA Met</div><div class="kpi-delta up" style="color:var(--success)">↑ 3%</div></div>
+          <div class="kpi-item"><div class="kpi-value">412</div><div class="kpi-label">Assets Scanned</div><div class="kpi-delta up">↑ 14 new</div></div>
+        </div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Severity Breakdown</div>
+            <div class="donut-wrap">
+              <svg width="180" height="180" viewBox="0 0 180 180">
+                <circle cx="90" cy="90" r="70" fill="none" stroke="var(--bg-hover)" stroke-width="24"/>
+                <circle cx="90" cy="90" r="70" fill="none" stroke="#ef4444" stroke-width="24"
+                  stroke-dasharray="440" stroke-dashoffset="396" transform="rotate(-90 90 90)"/>
+                <circle cx="90" cy="90" r="70" fill="none" stroke="#f97316" stroke-width="24"
+                  stroke-dasharray="440" stroke-dashoffset="300" transform="rotate(-90 90 90)"/>
+                <circle cx="90" cy="90" r="70" fill="none" stroke="#eab308" stroke-width="24"
+                  stroke-dasharray="440" stroke-dashoffset="160" transform="rotate(-90 90 90)"/>
+                <circle cx="90" cy="90" r="70" fill="none" stroke="#22c55e" stroke-width="24"
+                  stroke-dasharray="440" stroke-dashoffset="28" transform="rotate(-90 90 90)"/>
+                <text x="90" y="86" text-anchor="middle" fill="var(--text-primary)" font-size="22" font-weight="700">3,847</text>
+                <text x="90" y="106" text-anchor="middle" fill="var(--text-muted)" font-size="11">Total</text>
+              </svg>
+              <div class="donut-legend">
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#ef4444"></span> Critical (3.7%)</div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#f97316"></span> High (23.2%)</div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#eab308"></span> Medium (42.2%)</div>
+                <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#22c55e"></span> Low (30.9%)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="margin-bottom:16px">Team Breakdown (Top 5)</div>
+            <table>
+              <thead><tr><th>Team</th><th>Total</th><th>Critical</th><th>High</th><th>Trend</th></tr></thead>
+              <tbody>
+                <tr><td>Infrastructure</td><td class="mono">1,204</td><td style="color:var(--critical)">48</td><td style="color:var(--high)">312</td><td style="color:var(--success)">↓ 18</td></tr>
+                <tr><td>Platform Engineering</td><td class="mono">892</td><td style="color:var(--critical)">31</td><td style="color:var(--high)">204</td><td style="color:var(--success)">↓ 7</td></tr>
+                <tr><td>Security Operations</td><td class="mono">673</td><td style="color:var(--critical)">22</td><td style="color:var(--high)">156</td><td style="color:var(--danger)">↑ 12</td></tr>
+                <tr><td>Application Services</td><td class="mono">541</td><td style="color:var(--critical)">19</td><td style="color:var(--high)">98</td><td style="color:var(--success)">↓ 3</td></tr>
+                <tr><td>Database & Storage</td><td class="mono">387</td><td style="color:var(--critical)">15</td><td style="color:var(--high)">89</td><td style="color:var(--success)">↓ 22</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Trend chart (simplified SVG) -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">30-Day Trend — Active Findings</div>
+          <svg width="100%" height="200" viewBox="0 0 800 200" style="background:var(--bg-elevated);border-radius:var(--radius-sm)">
+            <polyline points="20,180 98,172 176,165 254,158 332,148 410,140 488,135 566,128 644,122 722,115 780,110"
+              fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="20" cy="180" r="3" fill="var(--accent)"/>
+            <circle cx="410" cy="140" r="3" fill="var(--accent)"/>
+            <circle cx="780" cy="110" r="4" fill="var(--accent)"/>
+            <text x="20" y="195" fill="var(--text-muted)" font-size="10" text-anchor="middle">Jun 1</text>
+            <text x="410" y="195" fill="var(--text-muted)" font-size="10" text-anchor="middle">Jun 14</text>
+            <text x="780" y="195" fill="var(--text-muted)" font-size="10" text-anchor="middle">Jun 28</text>
+            <text x="780" y="105" fill="var(--accent)" font-size="11" font-weight="600">3,847</text>
+            <line x1="20" y1="20" x2="780" y2="20" stroke="var(--border)" stroke-dasharray="4"/>
+            <text x="15" y="24" fill="var(--text-muted)" font-size="9">4,200</text>
+            <line x1="20" y1="100" x2="780" y2="100" stroke="var(--border)" stroke-dasharray="4"/>
+            <text x="15" y="104" fill="var(--text-muted)" font-size="9">3,800</text>
+            <line x1="20" y1="180" x2="780" y2="180" stroke="var(--border)" stroke-dasharray="4"/>
+            <text x="15" y="184" fill="var(--text-muted)" font-size="9">3,400</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ========== CVE DETAIL ========== -->
+      <div class="page" id="page-cve-detail">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <span class="mono" style="font-size:20px;font-weight:700">CVE-2026-12345</span>
+                <span class="badge badge-critical">Critical</span>
+                <span class="badge badge-high">CVSS 9.8</span>
+                <span style="color:var(--danger);font-size:14px">⚠ KEV</span>
+              </div>
+              <h3 style="margin-bottom:8px">Apache Log4j Remote Code Execution (Log4Shell)</h3>
+              <p style="color:var(--text-secondary);margin-bottom:12px;max-width:700px">
+                Apache Log4j2 versions 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1)
+                JNDI features used in configuration, log messages, and parameters do not protect against attacker-controlled
+                LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters
+                can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.
+              </p>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <span class="badge badge-high">Exploited: 2021-12-10</span>
+                <span class="badge badge-high">Due: 2021-12-24</span>
+                <span style="font-size:12px;color:var(--text-muted)">Ransomware: Yes</span>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <button class="btn btn-sm" onclick="document.querySelector('#cveWatched').textContent=document.querySelector('#cveWatched').textContent==='☆'?'★':'☆'">
+                <span id="cveWatched">★</span> Watch
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-team / filter -->
+        <div class="filters" style="margin-bottom:16px">
+          <select class="input"><option>All Teams</option><option>Infrastructure</option><option>Platform Engineering</option></select>
+          <select class="input"><option>All Locations</option><option>US-East</option><option>EU-Central</option></select>
+          <button class="btn btn-sm btn-primary" onclick="showToast('CSV exported with current filters applied')">📥 Export Filtered CSV</button>
+        </div>
+
+        <!-- Tabs: Active / Actioned / Resolved -->
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab(this,'active')">Active (7)</button>
+          <button class="tab" onclick="switchTab(this,'actioned')">Actioned (2)</button>
+          <button class="tab" onclick="switchTab(this,'resolved')">Resolved (4)</button>
+        </div>
+
+        <div class="card">
+          <table>
+            <thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>State</th><th>Status</th><th>Owner</th><th>First Seen</th><th>Last Observed</th></tr></thead>
+            <tbody>
+              <tr><td class="mono text-link">WEB-PROD-03</td><td>Apache Log4j Remote Code Execution</td><td class="mono">443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>jsmith</td><td style="font-size:12px;color:var(--text-muted)">2026-02-14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">WEB-PROD-07</td><td>Apache Log4j Remote Code Execution</td><td class="mono">443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-02-14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">APP-PROD-02</td><td>Log4j Detected (Windows Agent)</td><td class="mono">8080/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-medium">Risk Accepted</span></td><td>mwilson</td><td style="font-size:12px;color:var(--text-muted)">2026-03-01</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
+              <tr><td class="mono text-link">APP-PROD-05</td><td>Apache Log4j (Linux RPM Check)</td><td class="mono">8080/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-03-15</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">ADMIN-DEV-01</td><td>Log4j Vulnerability Scan (Nessus)</td><td class="mono">8443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-04-20</td><td style="font-size:12px;color:var(--text-muted)">2026-06-25</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== ASSETS ========== -->
+      <div class="page" id="page-assets">
+        <div class="filters">
+          <input class="input" placeholder="Search asset name, IP..." style="width:240px">
+          <select class="input"><option>All Sites</option><option>US-East</option><option>US-West</option><option>EU-Central</option></select>
+          <select class="input"><option>All OS</option><option>Windows Server 2022</option><option>Ubuntu 22.04</option><option>RHEL 9</option></select>
+          <button class="btn btn-sm btn-primary" style="margin-left:auto">🔄 Sync Assets</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Owner</th><th>Active CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
+            <tbody>
+              <tr><td class="mono text-link">WEB-PROD-03</td><td class="mono">10.23.4.17</td><td>Ubuntu 22.04 LTS</td><td>US-East (nyc1)</td><td>Platform Engineering</td><td class="mono">47</td><td style="color:var(--critical)">3</td><td style="color:var(--high)">14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">DC-PROD-01</td><td class="mono">10.23.1.4</td><td>Windows Server 2022</td><td>US-East (nyc1)</td><td>Infrastructure</td><td class="mono">32</td><td style="color:var(--critical)">5</td><td style="color:var(--high)">11</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
+              <tr><td class="mono text-link">DB-PROD-02</td><td class="mono">10.23.8.55</td><td>RHEL 9.3</td><td>EU-Central (fra1)</td><td>Database & Storage</td><td class="mono">28</td><td style="color:var(--critical)">2</td><td style="color:var(--high)">8</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">EXCH-PROD-01</td><td class="mono">10.23.2.12</td><td>Windows Server 2022</td><td>US-West (sfo1)</td><td>Infrastructure</td><td class="mono">19</td><td style="color:var(--critical)">1</td><td style="color:var(--high)">6</td><td style="font-size:12px;color:var(--text-muted)">2026-06-26</td></tr>
+              <tr><td class="mono text-link">APP-PROD-07</td><td class="mono">10.23.5.88</td><td>Ubuntu 22.04 LTS</td><td>US-East (nyc1)</td><td>Application Services</td><td class="mono">41</td><td style="color:var(--critical)">4</td><td style="color:var(--high)">12</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== ASSET DETAIL ========== -->
+      <div class="page" id="page-asset-detail"></div>
+
+      <!-- ========== SOLUTIONS ========== -->
+      <div class="page" id="page-solutions">
+        <div class="filters">
+          <input class="input" placeholder="Search solution text..." style="width:320px">
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Solution / Remediation</th><th>CVEs</th><th>Assets</th><th>Severity Range</th><th></th></tr></thead>
+            <tbody>
+              <tr class="clickable">
+                <td>Upgrade Apache Log4j to version 2.17.1 or later</td><td class="mono">2</td><td class="mono">12</td><td><span class="badge badge-critical">Critical</span></td>
+                <td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td>
+              </tr>
+              <tr class="clickable">
+                <td>Apply Microsoft Security Update KB5012345 for Print Spooler</td><td class="mono">3</td><td class="mono">34</td><td><span class="badge badge-high">High</span></td>
+                <td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td>
+              </tr>
+              <tr class="clickable">
+                <td>Upgrade OpenSSL to 3.0.12+ / 1.1.1w+</td><td class="mono">5</td><td class="mono">18</td><td><span class="badge badge-medium">Medium</span></td>
+                <td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td>
+              </tr>
+              <tr class="clickable">
+                <td>Deploy updated kernel package: linux-image-5.15.0-91-generic</td><td class="mono">4</td><td class="mono">22</td><td><span class="badge badge-high">High</span></td>
+                <td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td>
+              </tr>
+              <tr class="clickable">
+                <td>Install Microsoft Exchange Server SU CU23 Jan 2026</td><td class="mono">1</td><td class="mono">3</td><td><span class="badge badge-critical">Critical</span></td>
+                <td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== TEAMS ========== -->
+      <div class="page" id="page-teams">
+        <div class="team-grid">
+          <div class="team-card" onclick="viewTeam('infra')">
+            <div class="team-name">Infrastructure</div>
+            <div class="team-desc">Core network, domain controllers, DNS, DHCP</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">1,204</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">48</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">312</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('platform')">
+            <div class="team-name">Platform Engineering</div>
+            <div class="team-desc">Kubernetes, container registry, CI/CD pipelines</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">892</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">31</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">204</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('secops')">
+            <div class="team-name">Security Operations</div>
+            <div class="team-desc">SOC, incident response, threat hunting</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">673</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">22</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">156</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('apps')">
+            <div class="team-name">Application Services</div>
+            <div class="team-desc">Web apps, APIs, middleware, messaging</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">541</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">19</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">98</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('db')">
+            <div class="team-name">Database & Storage</div>
+            <div class="team-desc">RDBMS, NoSQL, SAN/NAS, backup infrastructure</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">387</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">15</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">89</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('euc')">
+            <div class="team-name">End-User Computing</div>
+            <div class="team-desc">VDI, workstations, MDM, printing</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">150</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">7</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">32</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+          <div class="team-card" onclick="viewTeam('endpoint')">
+            <div class="team-name">Endpoint Engineering</div>
+            <div class="team-desc">Jamf Pro, macOS fleet, endpoint compliance, Zero Trust</div>
+            <div class="team-stats">
+              <div class="team-stat"><div class="team-stat-val">218</div><div class="team-stat-label">Total</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">8</div><div class="team-stat-label">Critical</div></div>
+              <div class="team-stat"><div class="team-stat-val" style="color:var(--high)">47</div><div class="team-stat-label">High</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== TEAM DETAIL ========== -->
+      <div class="page" id="page-teams-detail">
+        <div style="margin-bottom:16px">
+          <button class="btn btn-sm btn-ghost" onclick="navigateTo('teams')">← Back to Teams</button>
+        </div>
+
+        <!-- Team header + stats bar -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div>
+              <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">Infrastructure</h2>
+              <p style="font-size:13px;color:var(--text-secondary)">Core network, domain controllers, DNS, DHCP</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
+                Scope: tags <span class="badge badge-neutral">env=production</span> <span class="badge badge-neutral">function=infra</span> &nbsp;|&nbsp; Sites: US-East, US-West, EU-Central
+              </p>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="showToast('CSV export would download team-filtered view')">📥 Export CSV</button>
+          </div>
+          <!-- Stats bar -->
+          <div class="kpi-strip" style="margin:0">
+            <div class="kpi-item"><div class="kpi-value">1,204</div><div class="kpi-label">Total</div><div class="kpi-delta down">↓ 18 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--critical)">48</div><div class="kpi-label">Critical</div><div class="kpi-delta down">↓ 3 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--high)">312</div><div class="kpi-label">High</div><div class="kpi-delta down">↓ 7 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--medium)">526</div><div class="kpi-label">Medium</div><div class="kpi-delta down">↓ 5 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--low)">318</div><div class="kpi-label">Low</div><div class="kpi-delta down">↓ 3 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--danger)">203</div><div class="kpi-label">Unactioned</div><div class="kpi-delta down">↓ 12 vs last month</div></div>
+            <div class="kpi-item"><div class="kpi-value" style="color:var(--warning)">89</div><div class="kpi-label">Aged &gt; 90d</div><div class="kpi-delta down">↓ 4 vs last month</div></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab(this,'team-assets')">Assets</button>
+          <button class="tab" onclick="switchTab(this,'team-solutions')">Solutions</button>
+          <button class="tab" onclick="switchTab(this,'team-findings')">Top Findings</button>
+          <button class="tab" onclick="switchTab(this,'team-products')">Products</button>
+        </div>
+
+        <!-- Assets tab -->
+        <div id="tab-team-assets" class="card" style="display:block">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:13px;color:var(--text-secondary)">67 assets in scope</span>
+            <input class="input" placeholder="Filter assets..." style="width:200px">
+          </div>
+          <table>
+            <thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Active CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="navigateTo('assets')"><td class="mono text-link">DC-PROD-01</td><td class="mono">10.23.1.4</td><td>Windows Server 2022</td><td>US-East (nyc1)</td><td class="mono">32</td><td style="color:var(--critical)">5</td><td style="color:var(--high)">11</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
+              <tr class="clickable" onclick="navigateTo('assets')"><td class="mono text-link">DC-PROD-02</td><td class="mono">10.23.1.5</td><td>Windows Server 2022</td><td>US-East (nyc1)</td><td class="mono">28</td><td style="color:var(--critical)">4</td><td style="color:var(--high)">9</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr class="clickable" onclick="navigateTo('assets')"><td class="mono text-link">EXCH-PROD-01</td><td class="mono">10.23.2.12</td><td>Windows Server 2022</td><td>US-West (sfo1)</td><td class="mono">19</td><td style="color:var(--critical)">1</td><td style="color:var(--high)">6</td><td style="font-size:12px;color:var(--text-muted)">2026-06-26</td></tr>
+              <tr class="clickable" onclick="navigateTo('assets')"><td class="mono text-link">DNS-PROD-01</td><td class="mono">10.23.1.10</td><td>RHEL 9.3</td><td>US-East (nyc1)</td><td class="mono">15</td><td style="color:var(--critical)">2</td><td style="color:var(--high)">5</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr class="clickable" onclick="navigateTo('assets')"><td class="mono text-link">FW-PROD-01</td><td class="mono">10.23.0.1</td><td>PAN-OS 11.1</td><td>US-East (nyc1)</td><td class="mono">12</td><td style="color:var(--critical)">0</td><td style="color:var(--high)">3</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Solutions tab -->
+        <div id="tab-team-solutions" class="card" style="display:none">
+          <table>
+            <thead><tr><th>Solution / Remediation</th><th>CVEs</th><th>Assets</th><th>Severity</th><th></th></tr></thead>
+            <tbody>
+              <tr class="clickable"><td>Apply Microsoft Security Update KB5012345 for Print Spooler</td><td class="mono">3</td><td class="mono">12</td><td><span class="badge badge-high">High</span></td><td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td></tr>
+              <tr class="clickable"><td>Deploy Windows Security Baseline GPO — June 2026</td><td class="mono">7</td><td class="mono">34</td><td><span class="badge badge-medium">Med–High</span></td><td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td></tr>
+              <tr class="clickable"><td>Upgrade OpenSSL to 3.0.12+ on all RHEL hosts</td><td class="mono">5</td><td class="mono">8</td><td><span class="badge badge-medium">Medium</span></td><td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td></tr>
+              <tr class="clickable"><td>Install PAN-OS 11.1.4-h4 maintenance release</td><td class="mono">4</td><td class="mono">3</td><td><span class="badge badge-high">High</span></td><td><button class="btn btn-sm" onclick="showToast('Change request draft copied')">📋 Draft CR</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Top Findings tab -->
+        <div id="tab-team-findings" class="card" style="display:none">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+            <span style="font-size:13px;color:var(--text-secondary)">Top findings by severity, KEV, and age</span>
+            <span style="font-size:11px;color:var(--text-muted)">Snapshots compared to 2026-05-28</span>
+          </div>
+          <table>
+            <thead><tr><th>CVE</th><th>Check / Plugin</th><th>Assets</th><th>Severity</th><th>KEV</th><th>Age</th><th>Δ MoM</th><th>★</th></tr></thead>
+            <tbody>
+              <tr class="clickable" onclick="navigateTo('cve-detail')" style="background:var(--critical-bg)">
+                <td class="mono text-link">CVE-2026-12345</td><td>Log4j RCE — Windows Agent Detection</td><td class="mono">12</td><td><span class="badge badge-critical">Critical</span></td><td><span style="color:var(--danger)">⚠ KEV</span></td><td style="font-size:12px;color:var(--text-muted)">134d</td><td style="color:var(--success)">↓ 2</td><td>★</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')" style="background:var(--critical-bg)">
+                <td class="mono text-link">CVE-2026-33445</td><td>Exchange Server RCE</td><td class="mono">3</td><td><span class="badge badge-critical">Critical</span></td><td><span style="color:var(--danger)">⚠ KEV</span></td><td style="font-size:12px;color:var(--text-muted)">77d</td><td style="color:var(--success)">↓ 1</td><td>★</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-11223</td><td>Windows Print Spooler Elevation</td><td class="mono">34</td><td><span class="badge badge-high">High</span></td><td><span style="color:var(--danger)">⚠ KEV</span></td><td style="font-size:12px;color:var(--text-muted)">171d</td><td style="color:var(--success)">↓ 4</td><td>★</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-17665</td><td>Windows Kerberos Elevation of Privilege</td><td class="mono">28</td><td><span class="badge badge-high">High</span></td><td></td><td style="font-size:12px;color:var(--text-muted)">89d</td><td style="color:var(--danger)">↑ 6</td><td>☆</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-08912</td><td>Windows SMBv3 Remote Code Execution</td><td class="mono">22</td><td><span class="badge badge-high">High</span></td><td></td><td style="font-size:12px;color:var(--text-muted)">45d</td><td style="color:var(--danger)">↑ 3</td><td>☆</td>
+              </tr>
+              <tr class="clickable" onclick="navigateTo('cve-detail')">
+                <td class="mono text-link">CVE-2026-09876</td><td>OpenSSL X.509 Certificate Parsing</td><td class="mono">18</td><td><span class="badge badge-medium">Medium</span></td><td></td><td style="font-size:12px;color:var(--text-muted)">220d</td><td style="color:var(--success)">↓ 1</td><td>☆</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Products tab -->
+        <div id="tab-team-products" class="card" style="display:none">
+          <table>
+            <thead><tr><th>Product Family</th><th>Findings</th><th>Critical</th><th>High</th><th>Δ MoM</th></tr></thead>
+            <tbody>
+              <tr><td>Microsoft Windows</td><td class="mono">462</td><td style="color:var(--critical)">18</td><td style="color:var(--high)">142</td><td style="color:var(--success)">↓ 12</td></tr>
+              <tr><td>Microsoft Exchange</td><td class="mono">87</td><td style="color:var(--critical)">5</td><td style="color:var(--high)">31</td><td style="color:var(--success)">↓ 3</td></tr>
+              <tr><td>Red Hat Enterprise Linux</td><td class="mono">203</td><td style="color:var(--critical)">8</td><td style="color:var(--high)">52</td><td style="color:var(--danger)">↑ 4</td></tr>
+              <tr><td>OpenSSL</td><td class="mono">89</td><td style="color:var(--critical)">2</td><td style="color:var(--high)">18</td><td style="color:var(--success)">↓ 5</td></tr>
+              <tr><td>Palo Alto PAN-OS</td><td class="mono">54</td><td style="color:var(--critical)">0</td><td style="color:var(--high)">11</td><td style="color:var(--success)">↓ 2</td></tr>
+              <tr><td>Apache (HTTPd, Log4j)</td><td class="mono">41</td><td style="color:var(--critical)">3</td><td style="color:var(--high)">12</td><td style="color:var(--danger)">↑ 1</td></tr>
+              <tr><td>Other (3 more)</td><td class="mono" style="color:var(--text-muted)">268</td><td style="color:var(--critical)">12</td><td style="color:var(--high)">46</td><td style="color:var(--text-muted)">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== RECENTLY FIXED ========== -->
+      <div class="page" id="page-recently-fixed"></div>
+
+      <!-- ========== VENDOR / FAMILY ========== -->
+      <div class="page" id="page-vendor">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Product Families</div>
+          <div class="family-row" onclick="showToast('Would drill into: Microsoft > Check-level view')">
+            <span class="family-name">Microsoft</span>
+            <span class="family-count">1,204 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:70%;background:var(--accent)"></div></div>
+          </div>
+          <div class="family-row" onclick="showToast('Would drill into: Linux Kernel > Check-level view')">
+            <span class="family-name">Linux Kernel</span>
+            <span class="family-count">562 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:33%;background:var(--critical)"></div></div>
+          </div>
+          <div class="family-row" onclick="showToast('Would drill into: Apache > Check-level view')">
+            <span class="family-name">Apache (HTTPd, Tomcat, Log4j)</span>
+            <span class="family-count">412 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:24%;background:var(--high)"></div></div>
+          </div>
+          <div class="family-row" onclick="showToast('Would drill into: OpenSSL > Check-level view')">
+            <span class="family-name">OpenSSL</span>
+            <span class="family-count">389 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:23%;background:var(--medium)"></div></div>
+          </div>
+          <div class="family-row" onclick="showToast('Would drill into: Ubuntu > Check-level view')">
+            <span class="family-name">Ubuntu</span>
+            <span class="family-count">311 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:18%;background:var(--medium)"></div></div>
+          </div>
+          <div class="family-row" onclick="showToast('Would drill into: VMware > Check-level view')">
+            <span class="family-name">VMware (ESXi, vCenter)</span>
+            <span class="family-count">278 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:16%;background:var(--high)"></div></div>
+          </div>
+          <div class="family-row" style="color:var(--text-muted)">
+            <span class="family-name">Other (4 more)</span>
+            <span class="family-count">691 findings</span>
+            <div class="family-bar"><div class="family-bar-fill" style="width:40%;background:var(--text-muted)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SETUP & IMPORTS ========== -->
+      <div class="page" id="page-setup">
+        <div class="import-grid">
+          <div class="import-card">
+            <div class="import-icon">📄</div>
+            <div class="import-name">Vulnerability Scanner CSV</div>
+            <div class="import-meta">Tenable.io / Nessus export</div>
+            <div class="import-status" style="color:var(--success)">✓ Last synced: 2026-06-28 06:42 UTC — 3,847 active findings</div>
+            <button class="btn btn-sm" style="margin-top:12px" onclick="showToast('Drag-drop upload would open here')">📤 Upload New Export</button>
+          </div>
+          <div class="import-card">
+            <div class="import-icon">🌐</div>
+            <div class="import-name">CISA KEV Catalog</div>
+            <div class="import-meta">Known Exploited Vulnerabilities feed</div>
+            <div class="import-status" style="color:var(--success)">✓ Last synced: 2026-06-28 06:41 UTC — 43 matches</div>
+            <button class="btn btn-sm" style="margin-top:12px" onclick="showToast('Would trigger live KEV feed pull')">🔄 Refresh Now</button>
+          </div>
+          <div class="import-card">
+            <div class="import-icon">📋</div>
+            <div class="import-name">Directory Export</div>
+            <div class="import-meta">Active Directory host dump</div>
+            <div class="import-status" style="color:var(--success)">✓ Last synced: 2026-06-27 02:15 UTC — 398 assets enriched</div>
+            <button class="btn btn-sm" style="margin-top:12px" onclick="showToast('Drag-drop upload would open here')">📤 Upload AD Export</button>
+          </div>
+          <div class="import-card">
+            <div class="import-icon">💻</div>
+            <div class="import-name">Endpoint Inventory</div>
+            <div class="import-meta">Endpoint management tool export</div>
+            <div class="import-status" style="color:var(--warning)">⚠ Last synced: 2026-06-25 12:00 UTC — 412 assets</div>
+            <button class="btn btn-sm" style="margin-top:12px" onclick="showToast('Drag-drop upload would open here')">📤 Upload Inventory</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-title" style="margin-bottom:12px">Scheduled Sync</div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary)">
+            <span>Scanner import:</span>
+            <span style="color:var(--success);font-weight:600">Enabled — every 6 hours</span>
+            <button class="btn btn-sm" onclick="showToast('Schedule updated')">Edit</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-secondary);margin-top:8px">
+            <span>KEV refresh:</span>
+            <span style="color:var(--success);font-weight:600">Enabled — daily at 08:00 UTC</span>
+            <button class="btn btn-sm" onclick="showToast('Schedule updated')">Edit</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">Data Quality Reports <span class="badge badge-neutral">Admin only</span></div>
+          <table>
+            <thead><tr><th>Report</th><th>Issues</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Assets with hostname-implied site mismatch</td><td class="mono" style="color:var(--warning)">12</td><td><button class="btn btn-sm btn-ghost">View</button></td></tr>
+              <tr><td>Assets missing OS (no scanner or inventory data)</td><td class="mono" style="color:var(--warning)">34</td><td><button class="btn btn-sm btn-ghost">View</button></td></tr>
+              <tr><td>Assets not resolved by directory export</td><td class="mono">23</td><td><button class="btn btn-sm btn-ghost">View</button></td></tr>
+              <tr><td>Stale asset tags (not updated in 30+ days)</td><td class="mono" style="color:var(--danger)">8</td><td><button class="btn btn-sm btn-ghost">View</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== ADMIN ========== -->
+      <div class="page" id="page-admin">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Users</span>
+            <button class="btn btn-sm btn-primary" onclick="showToast('Add user dialog would open')">+ Add User</button>
+          </div>
+          <table>
+            <thead><tr><th>User</th><th>Username</th><th>Role</th><th>Teams</th><th>Last Login</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="user-row" style="border:none;padding:0"><div class="user-avatar">DA</div> David Admin</div></td>
+                <td class="mono">david</td>
+                <td><span class="badge badge-high">Admin</span></td>
+                <td>All</td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-06-28 07:12</td>
+                <td><button class="btn btn-sm btn-ghost">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row" style="border:none;padding:0"><div class="user-avatar">JS</div> Jane Smith</div></td>
+                <td class="mono">jsmith</td>
+                <td><span class="badge badge-neutral">User</span></td>
+                <td>Infrastructure, Platform Engineering</td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-06-28 06:55</td>
+                <td><button class="btn btn-sm btn-ghost">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row" style="border:none;padding:0"><div class="user-avatar">MW</div> Mike Wilson</div></td>
+                <td class="mono">mwilson</td>
+                <td><span class="badge badge-neutral">User</span></td>
+                <td>Security Operations</td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-06-27 14:30</td>
+                <td><button class="btn btn-sm btn-ghost">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row" style="border:none;padding:0"><div class="user-avatar">RK</div> Rachel Kim</div></td>
+                <td class="mono">rkim</td>
+                <td><span class="badge badge-neutral">User</span></td>
+                <td>Application Services</td>
+                <td style="font-size:12px;color:var(--text-muted)">2026-06-27 10:18</td>
+                <td><button class="btn btn-sm btn-ghost">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">Authentication</div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:13px">
+            <span>Mode:</span>
+            <span class="badge badge-info">Local (username/password)</span>
+            <span style="color:var(--text-muted)">OIDC not configured</span>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-muted)">
+            Set <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_ISSUER</code>, <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_CLIENT_ID</code>, <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_CLIENT_SECRET</code> env vars to enable OIDC.
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CHANGELOG ========== -->
+      <div class="page" id="page-changelog">
+        <div class="card" style="max-width:640px">
+          <div class="card-title" style="margin-bottom:16px">Changelog</div>
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-06-25 — v2.4.0</div>
+              <div style="font-size:13px">Added vendor/family classification view with ordered regex rules. Per-asset plugin name storage to fix last-write-wins bug across platforms.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-06-18 — v2.3.1</div>
+              <div style="font-size:13px">Fixed access control audit: 9 unguarded team-scoped endpoints now enforce <code class="mono" style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">check_team_access</code>. Team detail now shows period-over-period deltas.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-06-10 — v2.3.0</div>
+              <div style="font-size:13px">Executive dashboard with trend snapshots. Recently-fixed view driven by <code class="mono" style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">fixed_at</code> transition timestamp. OS backfill from endpoint inventory.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-06-02 — v2.2.0</div>
+              <div style="font-size:13px">Teams config with shared scope helper. Precomputed stats tables with memory+disk caching. Background cache warm at startup.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-05-15 — v2.1.0</div>
+              <div style="font-size:13px">Streaming CSV importer with batched <code class="mono" style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">executemany</code>. Asset tags junction table. Solutions view and change-request draft assembler.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-05-01 — v2.0.0</div>
+              <div style="font-size:13px">Initial release: scanner importer, KEV feed, dashboard, findings list, CVE detail with per-asset status tracking.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal overlay -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ===== DATA STORE =====
+const TEAMS = {
+  'infra': { name:'Infrastructure', desc:'Core network, domain controllers, DNS, DHCP, firewalls', total:1204, critical:48, high:312, medium:526, low:318, unactioned:203, aged:89, deltaTotal:-18, deltaCrit:-3, deltaHigh:-7, deltaMed:-5, deltaLow:-3, deltaUnact:-12, deltaAged:-4, assets:67, tags:'env=production, function=infra', sites:'US-East, US-West, EU-Central', assets_list:[
+    {name:'DC-PROD-01',ip:'10.23.1.4',os:'Windows Server 2022',site:'US-East (nyc1)',cves:32,crit:5,high:11,seen:'2026-06-27'},
+    {name:'DC-PROD-02',ip:'10.23.1.5',os:'Windows Server 2022',site:'US-East (nyc1)',cves:28,crit:4,high:9,seen:'2026-06-28'},
+    {name:'DC-PROD-03',ip:'10.23.1.6',os:'Windows Server 2022',site:'US-East (nyc1)',cves:22,crit:3,high:8,seen:'2026-06-27'},
+    {name:'EXCH-PROD-01',ip:'10.23.2.12',os:'Windows Server 2022',site:'US-West (sfo1)',cves:19,crit:1,high:6,seen:'2026-06-26'},
+    {name:'EXCH-PROD-02',ip:'10.23.2.13',os:'Windows Server 2022',site:'US-West (sfo1)',cves:15,crit:1,high:4,seen:'2026-06-28'},
+    {name:'DNS-PROD-01',ip:'10.23.1.10',os:'RHEL 9.3',site:'US-East (nyc1)',cves:15,crit:2,high:5,seen:'2026-06-28'},
+    {name:'DNS-PROD-02',ip:'10.23.1.11',os:'RHEL 9.3',site:'US-East (nyc1)',cves:13,crit:1,high:4,seen:'2026-06-27'},
+    {name:'FW-PROD-01',ip:'10.23.0.1',os:'PAN-OS 11.1',site:'US-East (nyc1)',cves:12,crit:0,high:3,seen:'2026-06-27'},
+    {name:'FW-PROD-02',ip:'10.23.0.2',os:'PAN-OS 11.1',site:'EU-Central (fra1)',cves:10,crit:0,high:2,seen:'2026-06-28'},
+    {name:'NPS-PROD-01',ip:'10.23.1.20',os:'Windows Server 2022',site:'US-East (nyc1)',cves:18,crit:2,high:6,seen:'2026-06-26'},
+  ]},
+  'platform': { name:'Platform Engineering', desc:'Kubernetes, container registry, CI/CD pipelines', total:892, critical:31, high:204, medium:380, low:277, unactioned:156, aged:62, deltaTotal:-7, deltaCrit:-2, deltaHigh:-4, deltaMed:-1, deltaLow:0, deltaUnact:-8, deltaAged:-3, assets:48, tags:'env=production, function=platform', sites:'US-East, EU-Central', assets_list:[
+    {name:'K8S-PROD-01',ip:'10.23.10.5',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:41,crit:4,high:12,seen:'2026-06-28'},
+    {name:'K8S-PROD-02',ip:'10.23.10.6',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:38,crit:3,high:11,seen:'2026-06-27'},
+    {name:'K8S-PROD-03',ip:'10.23.10.7',os:'Ubuntu 22.04 LTS',site:'EU-Central (fra1)',cves:35,crit:3,high:10,seen:'2026-06-28'},
+    {name:'REGISTRY-01',ip:'10.23.10.20',os:'RHEL 9.3',site:'EU-Central (fra1)',cves:22,crit:2,high:7,seen:'2026-06-28'},
+    {name:'REGISTRY-02',ip:'10.23.10.21',os:'RHEL 9.3',site:'US-East (nyc1)',cves:19,crit:1,high:6,seen:'2026-06-27'},
+    {name:'JENKINS-01',ip:'10.23.10.30',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:29,crit:3,high:8,seen:'2026-06-26'},
+    {name:'JENKINS-02',ip:'10.23.10.31',os:'Ubuntu 22.04 LTS',site:'EU-Central (fra1)',cves:24,crit:2,high:7,seen:'2026-06-28'},
+    {name:'ARGOCD-01',ip:'10.23.10.40',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:16,crit:1,high:5,seen:'2026-06-27'},
+  ]},
+  'secops': { name:'Security Operations', desc:'SOC, incident response, threat hunting', total:673, critical:22, high:156, medium:295, low:200, unactioned:98, aged:45, deltaTotal:12, deltaCrit:1, deltaHigh:4, deltaMed:5, deltaLow:2, deltaUnact:6, deltaAged:2, assets:34, tags:'function=security', sites:'All', assets_list:[
+    {name:'SIEM-PROD-01',ip:'10.23.20.5',os:'RHEL 9.3',site:'US-East (nyc1)',cves:18,crit:1,high:5,seen:'2026-06-28'},
+    {name:'SIEM-PROD-02',ip:'10.23.20.6',os:'RHEL 9.3',site:'US-East (nyc1)',cves:15,crit:1,high:4,seen:'2026-06-27'},
+    {name:'SOAR-01',ip:'10.23.20.10',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:14,crit:0,high:4,seen:'2026-06-27'},
+    {name:'EDR-MGMT-01',ip:'10.23.20.15',os:'Windows Server 2022',site:'US-East (nyc1)',cves:22,crit:2,high:7,seen:'2026-06-28'},
+    {name:'TIP-01',ip:'10.23.20.20',os:'Ubuntu 22.04 LTS',site:'EU-Central (fra1)',cves:11,crit:1,high:3,seen:'2026-06-26'},
+    {name:'VA-SCANNER-01',ip:'10.23.20.25',os:'RHEL 9.3',site:'US-East (nyc1)',cves:8,crit:0,high:2,seen:'2026-06-28'},
+  ]},
+  'apps': { name:'Application Services', desc:'Web apps, APIs, middleware, messaging', total:541, critical:19, high:98, medium:242, low:182, unactioned:87, aged:38, deltaTotal:-3, deltaCrit:-1, deltaHigh:-2, deltaMed:0, deltaLow:0, deltaUnact:-4, deltaAged:-1, assets:41, tags:'function=apps, env=production', sites:'US-East, US-West', assets_list:[
+    {name:'WEB-PROD-03',ip:'10.23.4.17',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:47,crit:3,high:14,seen:'2026-06-28'},
+    {name:'WEB-PROD-05',ip:'10.23.4.19',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:38,crit:2,high:11,seen:'2026-06-27'},
+    {name:'WEB-PROD-07',ip:'10.23.4.21',os:'Ubuntu 22.04 LTS',site:'US-West (sfo1)',cves:35,crit:2,high:10,seen:'2026-06-28'},
+    {name:'APP-PROD-02',ip:'10.23.5.84',os:'Windows Server 2022',site:'US-East (nyc1)',cves:29,crit:3,high:8,seen:'2026-06-27'},
+    {name:'APP-PROD-05',ip:'10.23.5.87',os:'RHEL 9.3',site:'US-East (nyc1)',cves:26,crit:2,high:7,seen:'2026-06-28'},
+    {name:'APP-PROD-07',ip:'10.23.5.88',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:41,crit:4,high:12,seen:'2026-06-28'},
+    {name:'API-GW-01',ip:'10.23.4.50',os:'RHEL 9.3',site:'US-West (sfo1)',cves:23,crit:1,high:7,seen:'2026-06-27'},
+    {name:'MSG-BROKER-01',ip:'10.23.4.60',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:19,crit:1,high:5,seen:'2026-06-28'},
+  ]},
+  'db': { name:'Database & Storage', desc:'RDBMS, NoSQL, SAN/NAS, backup infrastructure', total:387, critical:15, high:89, medium:178, low:105, unactioned:52, aged:28, deltaTotal:-22, deltaCrit:-4, deltaHigh:-6, deltaMed:-8, deltaLow:-4, deltaUnact:-7, deltaAged:-3, assets:22, tags:'function=db, env=production', sites:'US-East, EU-Central', assets_list:[
+    {name:'DB-PROD-01',ip:'10.23.8.50',os:'RHEL 9.3',site:'US-East (nyc1)',cves:24,crit:2,high:7,seen:'2026-06-27'},
+    {name:'DB-PROD-02',ip:'10.23.8.55',os:'RHEL 9.3',site:'EU-Central (fra1)',cves:28,crit:2,high:8,seen:'2026-06-28'},
+    {name:'DB-PROD-03',ip:'10.23.8.56',os:'RHEL 9.3',site:'EU-Central (fra1)',cves:21,crit:1,high:6,seen:'2026-06-28'},
+    {name:'MONGO-PROD-01',ip:'10.23.8.70',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:18,crit:1,high:5,seen:'2026-06-27'},
+    {name:'SAN-CTRL-01',ip:'10.23.8.100',os:'Dell EMC Unity OE 5.3',site:'US-East (nyc1)',cves:7,crit:0,high:2,seen:'2026-06-26'},
+    {name:'BKUP-SRV-01',ip:'10.23.8.120',os:'Windows Server 2022',site:'US-East (nyc1)',cves:14,crit:1,high:4,seen:'2026-06-28'},
+    {name:'REDIS-PROD-01',ip:'10.23.8.80',os:'Ubuntu 22.04 LTS',site:'EU-Central (fra1)',cves:12,crit:0,high:3,seen:'2026-06-27'},
+    {name:'ELASTIC-01',ip:'10.23.8.90',os:'RHEL 9.3',site:'US-East (nyc1)',cves:16,crit:1,high:5,seen:'2026-06-28'},
+  ]},
+  'euc': { name:'End-User Computing', desc:'VDI, workstations, MDM, printing', total:150, critical:7, high:32, medium:68, low:43, unactioned:22, aged:12, deltaTotal:-5, deltaCrit:0, deltaHigh:-2, deltaMed:-2, deltaLow:-1, deltaUnact:-3, deltaAged:-1, assets:87, tags:'function=euc', sites:'All', assets_list:[
+    {name:'VDI-FARM-01',ip:'10.23.30.5',os:'Windows Server 2022',site:'US-East (nyc1)',cves:12,crit:1,high:3,seen:'2026-06-28'},
+    {name:'VDI-FARM-02',ip:'10.23.30.6',os:'Windows Server 2022',site:'US-West (sfo1)',cves:10,crit:0,high:3,seen:'2026-06-27'},
+    {name:'MDM-PROD-01',ip:'10.23.30.20',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:8,crit:0,high:2,seen:'2026-06-28'},
+    {name:'PRINT-SRV-01',ip:'10.23.30.30',os:'Windows Server 2022',site:'US-East (nyc1)',cves:14,crit:1,high:4,seen:'2026-06-27'},
+    {name:'FSLOGIX-01',ip:'10.23.30.40',os:'Windows Server 2022',site:'US-West (sfo1)',cves:9,crit:0,high:2,seen:'2026-06-28'},
+  ]},
+  'endpoint': { name:'Endpoint Engineering', desc:'Jamf Pro, macOS fleet, endpoint compliance, Zero Trust', total:218, critical:8, high:47, medium:102, low:61, unactioned:34, aged:18, deltaTotal:5, deltaCrit:2, deltaHigh:3, deltaMed:0, deltaLow:0, deltaUnact:4, deltaAged:2, assets:320, tags:'function=endpoint, env=production', sites:'All', assets_list:[
+    {name:'JAMF-PROD-01',ip:'10.23.35.5',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',cves:16,crit:0,high:4,seen:'2026-06-28'},
+    {name:'MAC-ENG-14',ip:'10.23.35.114',os:'macOS Sequoia 15.3',site:'US-East (nyc1)',cves:8,crit:2,high:3,seen:'2026-06-28'},
+    {name:'MAC-DESIGN-03',ip:'10.23.35.73',os:'macOS Sequoia 15.2.1',site:'US-West (sfo1)',cves:7,crit:1,high:3,seen:'2026-06-27'},
+    {name:'MAC-FIN-07',ip:'10.23.35.207',os:'macOS Sequoia 15.3',site:'US-East (nyc1)',cves:6,crit:0,high:3,seen:'2026-06-28'},
+    {name:'MAC-HR-02',ip:'10.23.35.42',os:'macOS Sonoma 14.7',site:'US-East (nyc1)',cves:5,crit:0,high:1,seen:'2026-06-26'},
+    {name:'MAC-LEGAL-01',ip:'10.23.35.151',os:'macOS Sequoia 15.3',site:'EU-Central (fra1)',cves:4,crit:0,high:2,seen:'2026-06-28'},
+    {name:'MAC-EXEC-01',ip:'10.23.35.10',os:'macOS Sequoia 15.4',site:'US-East (nyc1)',cves:3,crit:0,high:1,seen:'2026-06-28'},
+    {name:'MAC-MKTG-05',ip:'10.23.35.185',os:'macOS Sonoma 14.6.1',site:'US-West (sfo1)',cves:5,crit:0,high:1,seen:'2026-06-27'},
+  ]}
+};
+
+const CVES = {
+  'CVE-2026-12345': { title:'Apache Log4j Remote Code Execution (Log4Shell)', severity:'Critical', cvss:'9.8', kev:true, ransomware:true, exploited:'2021-12-10', due:'2021-12-24', desc:'Apache Log4j2 JNDI features do not protect against attacker-controlled LDAP endpoints. An attacker who can control log messages can execute arbitrary code loaded from LDAP servers.', fix:'Upgrade Apache Log4j to version 2.17.1 or later. Alternatively, set log4j2.formatMsgNoLookups=true.', refs:['https://nvd.nist.gov/vuln/detail/CVE-2021-44228'] },
+  'CVE-2026-11223': { title:'Windows Print Spooler Elevation of Privilege', severity:'High', cvss:'8.1', kev:true, ransomware:false, exploited:'2025-09-15', due:'2025-10-06', desc:'The Windows Print Spooler service improperly performs privileged file operations, allowing attackers to run arbitrary code with SYSTEM privileges.', fix:'Apply KB5012345. Disable Print Spooler on DCs and servers that do not require printing.', refs:['https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-11223'] },
+  'CVE-2026-33445': { title:'Microsoft Exchange Server Remote Code Execution', severity:'Critical', cvss:'9.8', kev:true, ransomware:true, exploited:'2026-04-12', due:'2026-05-03', desc:'Remote code execution in Exchange Server via improper validation of commandlet arguments. Attackers can send specially crafted requests to affected servers.', fix:'Install Exchange Server Security Update CU23 January 2026. Prioritize Internet-facing servers.', refs:['https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-33445'] },
+  'CVE-2026-09876': { title:'OpenSSL X.509 Certificate Parsing DoS', severity:'Medium', cvss:'5.9', kev:false, ransomware:false, exploited:null, due:null, desc:'A flaw in OpenSSL X.509 certificate parsing allows denial of service via a specially crafted certificate chain.', fix:'Upgrade OpenSSL to 3.0.12+ or 1.1.1w+.', refs:['https://www.openssl.org/news/secadv/20260315.txt'] },
+  'CVE-2026-04567': { title:'Linux Kernel Privilege Escalation via Netfilter', severity:'High', cvss:'7.8', kev:false, ransomware:false, exploited:null, due:null, desc:'Use-after-free in the Linux kernel Netfilter subsystem allows local privilege escalation to root.', fix:'Deploy linux-image-5.15.0-91-generic or later. Reboot required.', refs:['https://ubuntu.com/security/CVE-2026-04567'] },
+  'CVE-2026-08912': { title:'Windows SMBv3 Remote Code Execution', severity:'High', cvss:'8.5', kev:false, ransomware:false, exploited:null, due:null, desc:'A remote code execution vulnerability in Microsoft SMBv3 protocol handling allows unauthenticated attackers to execute code on the target server.', fix:'Apply KB5023456. Enable SMB signing and disable SMBv1 across the domain.', refs:['https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-08912'] },
+  'CVE-2026-17665': { title:'Windows Kerberos Elevation of Privilege', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'Kerberos KDC improperly validates PAC signatures, allowing an attacker with domain-joined machine access to escalate to domain admin.', fix:'Apply KB5024567. Enable PAC validation enforcement via GPO.', refs:['https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-17665'] },
+  'CVE-2026-22334': { title:'OpenSSL TLS Certificate Validation Bypass', severity:'Medium', cvss:'6.5', kev:false, ransomware:false, exploited:null, due:null, desc:'Improper validation of TLS certificate chains in OpenSSL could allow a MITM attacker to impersonate trusted servers.', fix:'Upgrade OpenSSL to 3.0.14+ or 1.1.1zb+.', refs:['https://www.openssl.org/news/secadv/20260401.txt'] },
+  'CVE-2026-14567': { title:'Linux Kernel Netfilter Use-After-Free', severity:'High', cvss:'7.2', kev:false, ransomware:false, exploited:null, due:null, desc:'A use-after-free in the netfilter xt_TCPMSS module allows local privilege escalation.', fix:'Deploy kernel 5.15.0-94 or 6.2.0-35.', refs:['https://nvd.nist.gov/vuln/detail/CVE-2026-14567'] },
+  'CVE-2026-08812': { title:'Node.js HTTP Request Smuggling', severity:'High', cvss:'7.3', kev:false, ransomware:false, exploited:null, due:null, desc:'Improper handling of Transfer-Encoding headers in Node.js HTTP parser allows HTTP request smuggling attacks.', fix:'Upgrade Node.js to 20.11.0+ or 18.19.0+.', refs:['https://nodejs.org/en/blog/vulnerability/june-2026'] },
+  'CVE-2026-25501': { title:'VMware vCenter Server RCE', severity:'Critical', cvss:'9.6', kev:true, ransomware:true, exploited:'2026-05-20', due:'2026-06-10', desc:'Heap overflow in vCenter Server DCERPC protocol implementation allows unauthenticated RCE.', fix:'Apply VMware security patch VMSA-2026-0012 immediately.', refs:['https://www.vmware.com/security/advisories/VMSA-2026-0012.html'] },
+  'CVE-2026-29100': { title:'Cisco IOS XE Web UI Authentication Bypass', severity:'Critical', cvss:'9.1', kev:true, ransomware:false, exploited:'2026-03-15', due:'2026-04-05', desc:'Authentication bypass in the Cisco IOS XE web UI allows unauthenticated attackers to gain full administrative access.', fix:'Upgrade to IOS XE 17.9.5+ or disable HTTP server if not needed.', refs:['https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-iosxe-webui'] },
+  'CVE-2026-31200': { title:'PostgreSQL Remote Code Execution', severity:'High', cvss:'8.2', kev:false, ransomware:false, exploited:null, due:null, desc:'CREATE FUNCTION privilege escalation allows authenticated users to execute arbitrary code as the PostgreSQL superuser.', fix:'Upgrade PostgreSQL to 16.3+, 15.7+, 14.12+ or 13.15+.', refs:['https://www.postgresql.org/support/security/CVE-2026-31200/'] },
+  'CVE-2026-34001': { title:'Apache Tomcat Request Smuggling', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'Improper input validation in Tomcat AJP connector allows HTTP request smuggling.', fix:'Upgrade Tomcat to 10.1.20+, 9.0.83+ or disable AJP connector if unused.', refs:['https://tomcat.apache.org/security-10.html'] },
+  'CVE-2026-37002': { title:'nginx HTTP/3 Stream Cancellation DoS', severity:'Medium', cvss:'6.8', kev:false, ransomware:false, exploited:null, due:null, desc:'Improper handling of HTTP/3 stream cancellation in nginx can exhaust worker resources.', fix:'Upgrade nginx to 1.26.1+ or apply configuration mitigations to limit HTTP/3 streams.', refs:['https://nginx.org/en/security_advisories.html'] },
+  'CVE-2026-41001': { title:'macOS Kernel Privilege Escalation (Sequoia)', severity:'High', cvss:'7.8', kev:false, ransomware:false, exploited:null, due:null, desc:'A memory corruption issue in the macOS kernel IOKit framework allows a malicious application to execute arbitrary code with kernel privileges. Affects macOS Sequoia 15.0–15.3.', fix:'Upgrade to macOS Sequoia 15.4 or later via System Settings > Software Update.', refs:['https://support.apple.com/en-us/HT214000'] },
+  'CVE-2026-42002': { title:'Safari WebKit Remote Code Execution', severity:'Critical', cvss:'9.1', kev:true, ransomware:true, exploited:'2026-06-01', due:'2026-06-22', desc:'A use-after-free in Safari WebKit allows remote attackers to execute arbitrary code via a crafted web page. Exploited in the wild against financial sector targets.', fix:'Upgrade Safari to version 18.4+ bundled with macOS 15.4 or install standalone Safari Technology Preview 210.', refs:['https://support.apple.com/en-us/HT214001'] },
+  'CVE-2026-43003': { title:'XProtect / Gatekeeper Bypass', severity:'Medium', cvss:'6.2', kev:false, ransomware:false, exploited:null, due:null, desc:'A logic flaw in macOS Gatekeeper allows notarized malicious applications to bypass XProtect malware scanning under specific bundle configurations.', fix:'Upgrade to macOS 15.4+. Enable "App Store and identified developers" in Privacy & Security settings.', refs:['https://support.apple.com/en-us/HT214002'] },
+  'CVE-2026-44004': { title:'Jamf Pro Privilege Escalation', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'An API authorization bypass in Jamf Pro 11.x allows standard users to escalate to administrator via crafted enrollment payloads.', fix:'Upgrade Jamf Pro to 11.12.1+. Rotate all Jamf Pro API credentials after upgrade.', refs:['https://learn.jamf.com/bundle/jamf-pro-release-notes/page/11_12_1.html'] },
+  'CVE-2026-45005': { title:'Microsoft 365 for macOS App Sandbox Escape', severity:'High', cvss:'7.3', kev:false, ransomware:false, exploited:null, due:null, desc:'App sandbox escape in Microsoft 365 (Office) for macOS allows a malicious document to access files outside the sandbox container.', fix:'Update Microsoft 365 to version 16.88+ (Build 24061000) via Microsoft AutoUpdate.', refs:['https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft-365-apps-for-mac'] },
+};
+
+const FINDINGS = [
+  {cve:'CVE-2026-12345', check:'Apache Log4j Remote Code Execution', asset:'WEB-PROD-03', port:'443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-14'},
+  {cve:'CVE-2026-12345', check:'Log4j Detected (Windows Agent)', asset:'APP-PROD-02', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-03-01'},
+  {cve:'CVE-2026-12345', check:'Apache Log4j (Linux RPM Check)', asset:'APP-PROD-05', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-03-15'},
+  {cve:'CVE-2026-12345', check:'Log4j Vulnerability Scan (Nessus)', asset:'ADMIN-DEV-01', port:'8443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-04-20'},
+  {cve:'CVE-2026-12345', check:'Apache Log4j JNDI Lookup (authenticated)', asset:'K8S-PROD-01', port:'8443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-18'},
+  {cve:'CVE-2026-12345', check:'Log4j CVE-2021-44228 Detection', asset:'JENKINS-01', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-20'},
+  {cve:'CVE-2026-11223', check:'Windows Print Spooler Elevation', asset:'DC-PROD-01', port:'445/tcp', severity:'High', state:'Active', kev:true, firstSeen:'2026-01-08'},
+  {cve:'CVE-2026-11223', check:'Print Spooler Remote Code Execution', asset:'DC-PROD-02', port:'445/tcp', severity:'High', state:'Active', kev:true, firstSeen:'2026-01-10'},
+  {cve:'CVE-2026-11223', check:'Print Spooler Service Check', asset:'PRINT-SRV-01', port:'445/tcp', severity:'High', state:'Active', kev:true, firstSeen:'2026-01-12'},
+  {cve:'CVE-2026-11223', check:'Windows Print Spooler Detection', asset:'NPS-PROD-01', port:'445/tcp', severity:'High', state:'Fixed', kev:true, firstSeen:'2026-01-08'},
+  {cve:'CVE-2026-33445', check:'Microsoft Exchange Server RCE', asset:'EXCH-PROD-01', port:'443/tcp', severity:'Critical', state:'Fixed', kev:true, firstSeen:'2026-04-12'},
+  {cve:'CVE-2026-33445', check:'Exchange Server RCE (CVE-2026-33445)', asset:'EXCH-PROD-02', port:'443/tcp', severity:'Critical', state:'Fixed', kev:true, firstSeen:'2026-04-14'},
+  {cve:'CVE-2026-09876', check:'OpenSSL X.509 Certificate Parsing', asset:'APP-PROD-07', port:'8443/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2025-11-20'},
+  {cve:'CVE-2026-09876', check:'OpenSSL Version Detection', asset:'DB-PROD-01', port:'5432/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2025-12-01'},
+  {cve:'CVE-2026-09876', check:'OpenSSL X.509 Parsing (RHEL RPM)', asset:'API-GW-01', port:'443/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2025-11-22'},
+  {cve:'CVE-2026-04567', check:'Linux Kernel Privilege Escalation', asset:'DB-PROD-02', port:'22/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-03-05'},
+  {cve:'CVE-2026-04567', check:'Kernel Netfilter UAF (Ubuntu)', asset:'K8S-PROD-02', port:'22/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-03-07'},
+  {cve:'CVE-2026-04567', check:'Kernel Privilege Escalation Check', asset:'SIEM-PROD-01', port:'22/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-03-10'},
+  {cve:'CVE-2026-08912', check:'Windows SMBv3 Remote Code Execution', asset:'DC-PROD-03', port:'445/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-14'},
+  {cve:'CVE-2026-08912', check:'SMBv3 Compression RCE Detection', asset:'DC-PROD-01', port:'445/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-15'},
+  {cve:'CVE-2026-08912', check:'Microsoft SMBv3 Vulnerability Scan', asset:'BKUP-SRV-01', port:'445/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-16'},
+  {cve:'CVE-2026-17665', check:'Windows Kerberos Elevation of Privilege', asset:'DC-PROD-03', port:'88/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-03-31'},
+  {cve:'CVE-2026-17665', check:'Kerberos PAC Validation Bypass', asset:'DC-PROD-02', port:'88/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-02'},
+  {cve:'CVE-2026-22334', check:'OpenSSL TLS Certificate Validation', asset:'WEB-PROD-05', port:'443/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-04-20'},
+  {cve:'CVE-2026-22334', check:'TLS Certificate Chain Validation', asset:'MSG-BROKER-01', port:'5671/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-04-22'},
+  {cve:'CVE-2026-14567', check:'Linux Kernel Netfilter Use-After-Free', asset:'DB-PROD-01', port:'22/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-01'},
+  {cve:'CVE-2026-14567', check:'Netfilter TCPMSS UAF Detection', asset:'K8S-PROD-03', port:'22/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-03'},
+  {cve:'CVE-2026-08812', check:'Node.js HTTP Request Smuggling', asset:'APP-PROD-02', port:'3000/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-20'},
+  {cve:'CVE-2026-08812', check:'Node.js Transfer-Encoding Check', asset:'WEB-PROD-07', port:'443/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-22'},
+  {cve:'CVE-2026-25501', check:'VMware vCenter Server RCE', asset:'VCENTER-01', port:'443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-05-25'},
+  {cve:'CVE-2026-29100', check:'Cisco IOS XE Web UI Auth Bypass', asset:'CSW-DIST-01', port:'443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-03-20'},
+  {cve:'CVE-2026-31200', check:'PostgreSQL Remote Code Execution', asset:'DB-PROD-01', port:'5432/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-06-05'},
+  {cve:'CVE-2026-31200', check:'PostgreSQL CREATE FUNCTION Check', asset:'DB-PROD-02', port:'5432/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-06-06'},
+  {cve:'CVE-2026-31200', check:'PostgreSQL Version Detection', asset:'DB-PROD-03', port:'5432/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-06-07'},
+  {cve:'CVE-2026-34001', check:'Apache Tomcat Request Smuggling', asset:'APP-PROD-05', port:'8009/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-06-10'},
+  {cve:'CVE-2026-34001', check:'Tomcat AJP Connector Detection', asset:'APP-PROD-07', port:'8009/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-06-11'},
+  {cve:'CVE-2026-37002', check:'nginx HTTP/3 Stream Cancellation', asset:'WEB-PROD-03', port:'443/udp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-06-15'},
+  {cve:'CVE-2026-37002', check:'nginx HTTP/3 Detection', asset:'API-GW-01', port:'443/udp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-06-16'},
+  {cve:'CVE-2026-37002', check:'nginx QUIC Stream Handling', asset:'WEB-PROD-05', port:'443/udp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-06-17'},
+  {cve:'CVE-2026-41001', check:'macOS Kernel IOKit Memory Corruption', asset:'MAC-ENG-14', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-05'},
+  {cve:'CVE-2026-41001', check:'macOS Sequoia Kernel Vulnerability Scan', asset:'MAC-DESIGN-03', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-07'},
+  {cve:'CVE-2026-41001', check:'macOS IOKit Privilege Escalation (Nessus)', asset:'MAC-FIN-07', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-08'},
+  {cve:'CVE-2026-42002', check:'Safari WebKit Use-After-Free RCE', asset:'MAC-ENG-14', port:'0/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-06-05'},
+  {cve:'CVE-2026-42002', check:'Safari WebKit Vulnerability Detection', asset:'MAC-DESIGN-03', port:'0/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-06-06'},
+  {cve:'CVE-2026-42002', check:'WebKit RCE Scanner Check', asset:'MAC-EXEC-01', port:'0/tcp', severity:'Critical', state:'Fixed', kev:true, firstSeen:'2026-06-05'},
+  {cve:'CVE-2026-43003', check:'XProtect Gatekeeper Bypass Detection', asset:'MAC-ENG-14', port:'0/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-05-10'},
+  {cve:'CVE-2026-43003', check:'macOS Gatekeeper Configuration Audit', asset:'MAC-HR-02', port:'0/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-05-12'},
+  {cve:'CVE-2026-44004', check:'Jamf Pro API Authorization Bypass', asset:'JAMF-PROD-01', port:'8443/tcp', severity:'High', state:'Fixed', kev:false, firstSeen:'2026-05-20'},
+  {cve:'CVE-2026-45005', check:'Microsoft 365 macOS Sandbox Escape', asset:'MAC-FIN-07', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-28'},
+  {cve:'CVE-2026-45005', check:'MS365 App Sandbox Audit (macOS)', asset:'MAC-LEGAL-01', port:'0/tcp', severity:'High', state:'Actioned', kev:false, firstSeen:'2026-05-29'},
+  {cve:'CVE-2026-09876', check:'OpenSSL X.509 Parsing — Remediation Pending', asset:'DB-PROD-01', port:'5432/tcp', severity:'Medium', state:'Actioned', kev:false, firstSeen:'2025-12-01'},
+  {cve:'CVE-2026-17665', check:'Kerberos PAC Fix Scheduled', asset:'DC-PROD-03', port:'88/tcp', severity:'High', state:'Actioned', kev:false, firstSeen:'2026-03-31'},
+  {cve:'CVE-2026-34001', check:'Tomcat AJP Connector — Change Window Booked', asset:'APP-PROD-07', port:'8009/tcp', severity:'High', state:'Actioned', kev:false, firstSeen:'2026-06-11'},
+  {cve:'CVE-2026-41001', check:'macOS Kernel IOKit — MDM Push Scheduled', asset:'MAC-HR-02', port:'0/tcp', severity:'High', state:'Actioned', kev:false, firstSeen:'2026-04-09'},
+  {cve:'CVE-2026-12345', check:'Log4j Fix Validated — Awaiting CAB Approval', asset:'K8S-PROD-01', port:'8443/tcp', severity:'Critical', state:'Actioned', kev:true, firstSeen:'2026-02-18'},
+];
+FINDINGS.forEach((f,i) => { f.id = i; });
+
+// ===== WATCH STATE =====
+let watchState = {};
+// Default watched: CVE-2026-12345, CVE-2026-11223, CVE-2026-33445, CVE-2026-25501, CVE-2026-29100
+['CVE-2026-12345','CVE-2026-11223','CVE-2026-33445','CVE-2026-25501','CVE-2026-29100'].forEach(c => watchState[c] = true);
+
+// ===== TEAM CARD CLICK HANDLERS =====
+let selectedTeam = 'infra';
+let selectedAsset = '';
+function viewTeam(slug) { selectedTeam = slug; navigateTo('teams-detail'); }
+function viewCVE(cveId) { navigateTo('cve-detail'); setTimeout(() => renderCVEDetail(cveId), 10); }
+function viewAsset(name) { selectedAsset = name; navigateTo('asset-detail'); }
+
+// ===== NAVIGATION =====
+const pageTitles = {
+  'dashboard': 'Dashboard',
+  'executive': 'Executive',
+  'cve-detail': 'CVE Detail',
+  'solutions': 'Solutions',
+  'vendor': 'Vendor / Family',
+  'recently-fixed': 'Recently Fixed',
+  'assets': 'Assets',
+  'teams': 'Teams',
+  'teams-detail': 'Team Detail',
+  'asset-detail': 'Asset Detail',
+  'setup': 'Setup & Imports',
+  'admin': 'Admin',
+  'changelog': 'Changelog'
+};
+
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+  document.getElementById('content').scrollTop = 0;
+
+  if (page === 'teams-detail') renderTeamDetail();
+  if (page === 'cve-detail') renderCVEDetail();
+  if (page === 'asset-detail') renderAssetDetail();
+  if (page === 'assets') renderAssetsPage();
+  if (page === 'recently-fixed') renderRecentlyFixed();
+  if (page === 'dashboard') renderFindingsTable();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => navigateTo(item.dataset.page));
+});
+
+// ===== RENDER TEAM DETAIL =====
+function renderTeamDetail() {
+  const t = TEAMS[selectedTeam];
+  const page = document.getElementById('page-teams-detail');
+  if (!page || !t) return;
+
+  const delta = (n) => n >= 0 ? `<span style="color:var(--danger)">↑ ${n}</span>` : `<span style="color:var(--success)">↓ ${Math.abs(n)}</span>`;
+
+  page.innerHTML = `
+    <div style="margin-bottom:16px">
+      <button class="btn btn-sm btn-ghost" onclick="navigateTo('teams')">← Back to Teams</button>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div>
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">${t.name}</h2>
+          <p style="font-size:13px;color:var(--text-secondary)">${t.desc}</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
+            Scope: ${t.tags.split(', ').map(tg => `<span class="badge badge-neutral">${tg}</span>`).join(' ')} &nbsp;|&nbsp; Sites: ${t.sites}
+          </p>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="showToast('CSV export would download team-filtered view')">📥 Export CSV</button>
+      </div>
+      <div class="kpi-strip" style="margin:0">
+        <div class="kpi-item"><div class="kpi-value">${t.total.toLocaleString()}</div><div class="kpi-label">Total</div><div class="kpi-delta">${delta(t.deltaTotal)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--critical)">${t.critical}</div><div class="kpi-label">Critical</div><div class="kpi-delta">${delta(t.deltaCrit)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--high)">${t.high}</div><div class="kpi-label">High</div><div class="kpi-delta">${delta(t.deltaHigh)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--medium)">${t.medium}</div><div class="kpi-label">Medium</div><div class="kpi-delta">${delta(t.deltaMed)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--low)">${t.low}</div><div class="kpi-label">Low</div><div class="kpi-delta">${delta(t.deltaLow)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--danger)">${t.unactioned}</div><div class="kpi-label">Unactioned</div><div class="kpi-delta">${delta(t.deltaUnact)} vs last month</div></div>
+        <div class="kpi-item"><div class="kpi-value" style="color:var(--warning)">${t.aged}</div><div class="kpi-label">Aged > 90d</div><div class="kpi-delta">${delta(t.deltaAged)} vs last month</div></div>
+      </div>
+    </div>
+    <div class="tabs" id="teamDetailTabs">
+      <button class="tab active" onclick="switchTab(this,'team-assets')">Assets</button>
+      <button class="tab" onclick="switchTab(this,'team-solutions')">Solutions</button>
+      <button class="tab" onclick="switchTab(this,'team-findings')">Top Findings</button>
+      <button class="tab" onclick="switchTab(this,'team-products')">Products</button>
+    </div>
+    <div id="tab-team-assets" class="card" style="display:block">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--text-secondary)">${t.assets} assets in scope</span>
+        <input class="input" placeholder="Filter assets..." style="width:200px" oninput="filterAssetsTable(this.value)">
+      </div>
+      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Active CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
+      <tbody id="teamAssetsBody">
+        ${t.assets_list.map(a => `<tr class="clickable" onclick="viewAsset('${a.name}')"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${a.site}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div id="tab-team-findings" class="card" style="display:none">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--text-secondary)">Top findings by severity, KEV, and age</span>
+        <span style="font-size:11px;color:var(--text-muted)">Snapshots compared to 2026-05-28</span>
+      </div>
+      <table><thead><tr><th>CVE</th><th>Check / Plugin</th><th>Assets</th><th>Severity</th><th>KEV</th><th>Age</th><th>Δ MoM</th><th>★</th></tr></thead><tbody>
+        ${getTeamTopFindings().map((f,i) => `<tr class="clickable" onclick="viewCVE('${f.cve}')" ${f.severity==='Critical'?'style="background:var(--critical-bg)"':''}><td class="mono text-link">${f.cve}</td><td>${f.check}</td><td class="mono">${f.assets}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td>${f.kev?'<span style="color:var(--danger)">⚠ KEV</span>':''}</td><td style="font-size:12px;color:var(--text-muted)">${f.age}</td><td style="color:${f.delta>0?'var(--danger)':'var(--success)'}">${f.delta>0?'↑':'↓'} ${Math.abs(f.delta)}</td><td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[f.cve]?'★':'☆'}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div id="tab-team-solutions" class="card" style="display:none">
+      <table><thead><tr><th>Solution / Remediation</th><th>CVEs</th><th>Assets</th><th>Severity</th><th></th></tr></thead><tbody>
+        <tr class="clickable"><td>Apply Microsoft Security Update KB5012345 for Print Spooler</td><td class="mono">3</td><td class="mono">${Math.floor(t.assets*0.18)}</td><td><span class="badge badge-high">High</span></td><td><button class="btn btn-sm" onclick="showCRDraft('Microsoft Print Spooler Fix','Apply Microsoft Security Update KB5012345 for Print Spooler','High','${t.assets} assets affected. Disable Print Spooler on DCs.')">📋 Draft CR</button></td></tr>
+        <tr class="clickable"><td>Deploy Windows Security Baseline GPO — June 2026</td><td class="mono">7</td><td class="mono">${Math.floor(t.assets*0.5)}</td><td><span class="badge badge-medium">Med–High</span></td><td><button class="btn btn-sm" onclick="showCRDraft('Windows Baseline GPO','Deploy Windows Security Baseline GPO — June 2026','Medium','${Math.floor(t.assets*0.5)} assets — standard monthly patch cycle')">📋 Draft CR</button></td></tr>
+        <tr class="clickable"><td>Upgrade OpenSSL to 3.0.12+ on all RHEL hosts</td><td class="mono">5</td><td class="mono">${Math.floor(t.assets*0.12)}</td><td><span class="badge badge-medium">Medium</span></td><td><button class="btn btn-sm" onclick="showCRDraft('OpenSSL Upgrade','Upgrade OpenSSL to 3.0.12+','Medium','${Math.floor(t.assets*0.12)} RHEL hosts — requires service restart')">📋 Draft CR</button></td></tr>
+      </tbody></table>
+    </div>
+    <div id="tab-team-products" class="card" style="display:none">
+      <table><thead><tr><th>Product Family</th><th>Findings</th><th>Critical</th><th>High</th><th>Δ MoM</th></tr></thead><tbody>
+        <tr><td>Microsoft Windows</td><td class="mono">462</td><td style="color:var(--critical)">${Math.floor(t.critical*0.38)}</td><td style="color:var(--high)">${Math.floor(t.high*0.45)}</td><td style="color:var(--success)">↓ 12</td></tr>
+        <tr><td>Microsoft Exchange</td><td class="mono">87</td><td style="color:var(--critical)">${Math.floor(t.critical*0.1)}</td><td style="color:var(--high)">${Math.floor(t.high*0.1)}</td><td style="color:var(--success)">↓ 3</td></tr>
+        <tr><td>Red Hat Enterprise Linux</td><td class="mono">203</td><td style="color:var(--critical)">${Math.floor(t.critical*0.17)}</td><td style="color:var(--high)">${Math.floor(t.high*0.17)}</td><td style="color:var(--danger)">↑ 4</td></tr>
+        <tr><td>Other (3 more)</td><td class="mono" style="color:var(--text-muted)">268</td><td style="color:var(--critical)">${Math.floor(t.critical*0.25)}</td><td style="color:var(--high)">${Math.floor(t.high*0.15)}</td><td style="color:var(--text-muted)">—</td></tr>
+      </tbody></table>
+    </div>`;
+}
+
+function getTeamTopFindings() {
+  const t = TEAMS[selectedTeam];
+  return [
+    {cve:'CVE-2026-12345', check:'Log4j RCE — Windows Agent Detection', assets:Math.floor(t.total*0.01), severity:'Critical', kev:true, age:'134d', delta:-2},
+    {cve:'CVE-2026-33445', check:'Exchange Server RCE', assets:Math.floor(t.total*0.002), severity:'Critical', kev:true, age:'77d', delta:-1},
+    {cve:'CVE-2026-11223', check:'Windows Print Spooler Elevation', assets:Math.floor(t.total*0.028), severity:'High', kev:true, age:'171d', delta:-4},
+    {cve:'CVE-2026-17665', check:'Windows Kerberos Elevation of Privilege', assets:Math.floor(t.total*0.023), severity:'High', kev:false, age:'89d', delta:6},
+    {cve:'CVE-2026-08912', check:'Windows SMBv3 Remote Code Execution', assets:Math.floor(t.total*0.018), severity:'High', kev:false, age:'45d', delta:3},
+    {cve:'CVE-2026-09876', check:'OpenSSL X.509 Certificate Parsing', assets:Math.floor(t.total*0.015), severity:'Medium', kev:false, age:'220d', delta:-1},
+  ];
+}
+
+function filterAssetsTable(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('#teamAssetsBody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ===== RENDER CVE DETAIL =====
+function renderCVEDetail(cveId) {
+  cveId = cveId || 'CVE-2026-12345';
+  const c = CVES[cveId];
+  if (!c) return;
+  const page = document.getElementById('page-cve-detail');
+
+  page.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span class="mono" style="font-size:20px;font-weight:700">${cveId || 'CVE-2026-12345'}</span>
+            <span class="badge badge-${c.severity.toLowerCase()}">${c.severity}</span>
+            <span class="badge badge-high">CVSS ${c.cvss}</span>
+            ${c.kev ? '<span style="color:var(--danger);font-size:14px">⚠ KEV</span>' : ''}
+          </div>
+          <h3 style="margin-bottom:8px">${c.title}</h3>
+          <p style="color:var(--text-secondary);margin-bottom:12px;max-width:700px">${c.desc}</p>
+          ${c.kev ? `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="badge badge-high">Exploited: ${c.exploited}</span><span class="badge badge-high">Due: ${c.due}</span>${c.ransomware ? '<span style="font-size:12px;color:var(--danger)">Ransomware: Yes</span>' : ''}</div>` : ''}
+          <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--accent)">
+            <strong style="font-size:13px">Remediation:</strong>
+            <p style="font-size:13px;color:var(--text-secondary);margin-top:4px">${c.fix}</p>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <button class="btn btn-sm" onclick="toggleWatchStar(this);showToast(watchState['${cveId}']?'Watching ${cveId}':'Unwatched ${cveId}')" style="font-size:14px">
+            <span>${watchState[cveId] ? '★' : '☆'}</span> Watch
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="filters" style="margin-bottom:16px">
+      <select class="input"><option>All Teams</option><option>Infrastructure</option><option>Platform Engineering</option></select>
+      <select class="input"><option>All Locations</option><option>US-East</option><option>EU-Central</option></select>
+      <button class="btn btn-sm btn-primary" onclick="showToast('CSV exported with current filters applied')">📥 Export Filtered CSV</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'cve-active')">Active (${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Active').length})</button>
+      <button class="tab" onclick="switchTab(this,'cve-actioned')">Actioned (${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Actioned').length})</button>
+      <button class="tab" onclick="switchTab(this,'cve-resolved')">Resolved (${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Fixed').length})</button>
+    </div>
+    <div id="tab-cve-active" class="card" style="display:block">
+      <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>First Seen</th><th>Last Observed</th></tr></thead>
+      <tbody>${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Active').map(f=>`<tr class="clickable" onclick="viewAsset('${f.asset}')"><td class="mono text-link">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td style="font-size:12px;color:var(--text-muted)">${f.firstSeen}</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No active findings</td></tr>'}</tbody></table>
+    </div>
+    <div id="tab-cve-actioned" class="card" style="display:none">
+      <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>Status</th><th>Owner</th><th>Notes</th></tr></thead>
+      <tbody>${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Actioned').map(f=>`<tr><td class="mono text-link">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td><span class="badge badge-info">In Progress</span></td><td>${f.asset.includes('DC')?'jsmith':f.asset.includes('MAC')?'agarcia':f.asset.includes('DB')?'tnguyen':f.asset.includes('APP')?'mwilson':'—'}</td><td style="font-size:12px;color:var(--text-secondary)">${f.check.includes('CAB')?'Awaiting CAB approval for change window':f.check.includes('Booked')?'Maintenance window: 2026-07-05 02:00 UTC':f.check.includes('Scheduled')?'MDM push staged for 2026-07-03':f.check.includes('Pending')?'Remediation verified in staging, prod rollout pending':'Fix in progress — ticket #SEC-${2000+Math.floor(Math.random()*500)}'}</td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No actioned findings</td></tr>'}</tbody></table>
+    </div>
+    <div id="tab-cve-resolved" class="card" style="display:none">
+      <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>Fixed At</th><th>Verified By</th></tr></thead>
+      <tbody>${FINDINGS.filter(f=>f.cve===cveId&&f.state==='Fixed').map(f=>`<tr><td class="mono text-link">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td style="font-size:12px;color:var(--success)">2026-06-${15+Math.floor(Math.random()*12)}</td><td style="font-size:12px;color:var(--text-muted)">${f.asset.includes('EXEC')?'agarcia':f.asset.includes('EXCH')?'jsmith':f.asset.includes('JAMF')?'agarcia':'va-scanner'}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No resolved findings</td></tr>'}</tbody></table>
+    </div>`;
+}
+
+// ===== WATCH STAR TOGGLE =====
+function toggleWatchStar(el) {
+  // Find the parent row's CVE
+  let row = el.closest('tr');
+  let cveCell = row ? row.querySelector('.mono') : null;
+  let cveId = cveCell ? cveCell.textContent.trim() : 'CVE-2026-12345';
+
+  watchState[cveId] = !watchState[cveId];
+  el.textContent = watchState[cveId] ? '★' : '☆';
+}
+
+// ===== RENDER FINDINGS TABLE =====
+function renderFindingsTable(filter, opts) {
+  const q = (typeof filter === 'string' ? filter : (opts?.search || '')).toLowerCase();
+  if (typeof filter === 'object') { opts = filter; filter = opts.search || ''; }
+  opts = opts || {};
+  const tbody = document.querySelector('#page-dashboard .card:last-of-type tbody');
+  if (!tbody) return;
+
+  let filtered = FINDINGS.filter(f => {
+    if (q && !f.cve.toLowerCase().includes(q) && !f.check.toLowerCase().includes(q) && !f.asset.toLowerCase().includes(q)) return false;
+    if (opts.severity && opts.severity !== 'All' && f.severity !== opts.severity) return false;
+    if (opts.state && opts.state !== 'All') {
+      if (opts.state === 'KEV' && !f.kev) return false;
+      if (opts.state === 'Aged' && f.firstSeen > '2026-03-28') return false;
+      if (opts.state === 'Unactioned' && f.state !== 'Active') return false;
+    }
+    return true;
+  });
+
+  // Group by check if requested
+  if (opts.groupBy) {
+    const groups = {};
+    filtered.forEach(f => {
+      const key = f.cve + '|' + f.check;
+      if (!groups[key]) groups[key] = {cve: f.cve, check: f.check, severity: f.severity, count: 0, assets: new Set(), kev: f.kev};
+      groups[key].count++;
+      groups[key].assets.add(f.asset);
+    });
+
+    tbody.innerHTML = Object.values(groups).map(g => `
+      <tr class="clickable" onclick="viewCVE('${g.cve}')">
+        <td class="mono text-link">${g.cve}</td>
+        <td>${g.check}</td>
+        <td style="color:var(--text-muted)">${g.assets.size} assets</td>
+        <td></td>
+        <td><span class="badge badge-${g.severity.toLowerCase()}">${g.severity}</span></td>
+        <td><span class="badge badge-neutral">${g.count} findings</span></td>
+        <td>${g.kev?'<span style="color:var(--danger)">⚠</span>':''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">—</td>
+        <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[g.cve]?'★':'☆'}</td>
+      </tr>`).join('');
+  } else {
+    tbody.innerHTML = filtered.map(f => `
+      <tr class="clickable" onclick="viewCVE('${f.cve}')">
+        <td class="mono text-link">${f.cve}</td>
+        <td>${f.check}</td>
+        <td>${f.asset}</td>
+        <td class="mono">${f.port}</td>
+        <td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td>
+        <td><span class="badge badge-neutral">${f.state}</span></td>
+        <td>${f.kev?'<span style="color:var(--danger)">⚠</span>':''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${f.firstSeen}</td>
+        <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[f.cve]?'★':'☆'}</td>
+      </tr>`).join('');
+  }
+
+  const countEl = tbody.parentElement.parentElement.querySelector('div:last-child');
+  if (countEl) {
+    const parts = [];
+    if (q) parts.push(`search "${filter}"`);
+    if (opts.severity) parts.push(opts.severity.toLowerCase());
+    countEl.textContent = parts.length
+      ? `Showing ${filtered.length} of ${FINDINGS.length} findings — filtered by ${parts.join(', ')}`
+      : `Showing ${Math.min(opts.groupBy ? 999 : 10, filtered.length)} of ${FINDINGS.length} findings — counts frozen between imports`;
+  }
+}
+
+// ===== DASHBOARD FILTERS =====
+let dashFilters = {};
+function dashFilter(type, value) {
+  if (value === 'All' || value === dashFilters[type]) {
+    delete dashFilters[type];
+  } else {
+    dashFilters[type] = value;
+  }
+  // Update dropdowns to reflect state
+  ['severity','state'].forEach(t => {
+    const sel = document.querySelector(`#page-dashboard select[data-filter="${t}"]`);
+    if (sel) sel.value = dashFilters[t] || 'All';
+  });
+  const gb = document.querySelector('#page-dashboard input[type=checkbox][data-filter="groupBy"]');
+  dashFilters.groupBy = gb ? gb.checked : false;
+  renderFindingsTable(dashFilters.search || dashFilters.searchVal || '', dashFilters);
+  updateStatHighlights();
+}
+
+function updateStatHighlights() {
+  const hasFilter = dashFilters.severity || dashFilters.state;
+  document.querySelectorAll('#page-dashboard .stat-card').forEach(card => {
+    card.style.opacity = hasFilter ? '0.5' : '1';
+    card.style.borderColor = hasFilter ? 'var(--border)' : '';
+  });
+  if (dashFilters.severity) {
+    const map = {Critical:'.critical',High:'.high',Medium:'.medium',Low:'.low'};
+    const sel = document.querySelector(`#page-dashboard .stat-card${map[dashFilters.severity]||''}`);
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'KEV') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(2)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'Aged') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(6)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'Unactioned') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(7)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+}
+
+// ===== RENDER ASSET DETAIL =====
+function renderAssetDetail() {
+  // Find asset data from all teams
+  let assetData = null, teamName = '';
+  for (const [slug, t] of Object.entries(TEAMS)) {
+    const found = t.assets_list.find(a => a.name === selectedAsset);
+    if (found) { assetData = found; teamName = t.name; break; }
+  }
+  if (!assetData) return;
+
+  const findings = FINDINGS.filter(f => f.asset === selectedAsset);
+  const page = document.getElementById('page-asset-detail');
+
+  page.innerHTML = `
+    <div style="margin-bottom:16px">
+      <button class="btn btn-sm btn-ghost" onclick="navigateTo('assets')">← Back to Assets</button>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">${assetData.name}</h2>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap">
+            <span class="badge badge-info" style="font-size:12px">${assetData.os}</span>
+            <span class="mono" style="font-size:13px;color:var(--text-secondary)">${assetData.ip}</span>
+            <span style="font-size:12px;color:var(--text-muted)">${assetData.site}</span>
+            <span style="font-size:12px;color:var(--text-muted)">|</span>
+            <span style="font-size:12px;color:var(--text-secondary)">Team: ${teamName}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-strip" style="margin-bottom:16px">
+      <div class="kpi-item"><div class="kpi-value">${findings.length}</div><div class="kpi-label">Active Findings</div></div>
+      <div class="kpi-item"><div class="kpi-value" style="color:var(--critical)">${findings.filter(f=>f.severity==='Critical').length}</div><div class="kpi-label">Critical</div></div>
+      <div class="kpi-item"><div class="kpi-value" style="color:var(--high)">${findings.filter(f=>f.severity==='High').length}</div><div class="kpi-label">High</div></div>
+      <div class="kpi-item"><div class="kpi-value" style="color:var(--medium)">${findings.filter(f=>f.severity==='Medium').length}</div><div class="kpi-label">Medium</div></div>
+      <div class="kpi-item"><div class="kpi-value">${assetData.cves}</div><div class="kpi-label">Total (incl. resolved)</div></div>
+      <div class="kpi-item"><div class="kpi-value" style="color:var(--text-muted)">${assetData.seen}</div><div class="kpi-label">Last Seen</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Findings on ${assetData.name}</span></div>
+      <table><thead><tr><th>CVE</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>State</th><th>KEV</th><th>First Seen</th><th>★</th></tr></thead>
+      <tbody>${findings.map(f => `
+        <tr class="clickable" onclick="viewCVE('${f.cve}')">
+          <td class="mono text-link">${f.cve}</td>
+          <td>${f.check}</td>
+          <td class="mono">${f.port}</td>
+          <td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td>
+          <td><span class="badge badge-neutral">${f.state}</span></td>
+          <td>${f.kev?'<span style="color:var(--danger)">⚠</span>':''}</td>
+          <td style="font-size:12px;color:var(--text-muted)">${f.firstSeen}</td>
+          <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[f.cve]?'★':'☆'}</td>
+        </tr>`).join('')}</tbody></table>
+      ${findings.length === 0 ? '<div style="padding:24px;text-align:center;color:var(--text-muted)">No findings for this asset.</div>' : ''}
+    </div>`;
+}
+
+// ===== RENDER ASSETS PAGE =====
+function renderAssetsPage() {
+  const page = document.getElementById('page-assets');
+  const allAssets = [];
+  for (const [slug, t] of Object.entries(TEAMS)) {
+    t.assets_list.forEach(a => allAssets.push({...a, team: t.name}));
+  }
+  allAssets.sort((a,b) => b.cves - a.cves);
+
+  page.innerHTML = `
+    <div class="filters">
+      <input class="input" placeholder="Search asset name, IP..." style="width:240px" id="assetsSearch" oninput="filterGlobalAssets(this.value)">
+      <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option>All Sites</option><option>US-East</option><option>US-West</option><option>EU-Central</option></select>
+      <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option>All OS</option><option>Windows Server 2022</option><option>Ubuntu 22.04 LTS</option><option>RHEL 9.3</option><option>PAN-OS</option><option>Dell EMC</option></select>
+      <span style="font-size:13px;color:var(--text-secondary);margin-left:auto">${allAssets.length} assets across ${Object.keys(TEAMS).length} teams</span>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Team</th><th>CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
+      <tbody id="globalAssetsBody">
+        ${allAssets.map(a => `<tr class="clickable" onclick="viewAsset('${a.name}')" data-site="${a.site}" data-os="${a.os}"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${a.site}</td><td>${a.team}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+function filterGlobalAssets(query) {
+  const q = (query || '').toLowerCase();
+  const siteFilter = document.querySelector('#page-assets select:nth-of-type(1)')?.value || 'All Sites';
+  const osFilter = document.querySelector('#page-assets select:nth-of-type(2)')?.value || 'All OS';
+  document.querySelectorAll('#globalAssetsBody tr').forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const site = row.dataset.site || '';
+    const os = row.dataset.os || '';
+    const matchSearch = !q || text.includes(q);
+    const matchSite = siteFilter === 'All Sites' || site.includes(siteFilter);
+    const matchOS = osFilter === 'All OS' || os.includes(osFilter);
+    row.style.display = matchSearch && matchSite && matchOS ? '' : 'none';
+  });
+}
+// ===== RENDER RECENTLY FIXED =====
+function renderRecentlyFixed() {
+  const fixed = FINDINGS.filter(f => f.state === 'Fixed');
+  // Assign team by matching asset
+  const withTeams = fixed.map(f => {
+    let team = '—';
+    for (const [slug, t] of Object.entries(TEAMS)) {
+      if (t.assets_list.some(a => a.name === f.asset)) { team = t.name; break; }
+    }
+    return {...f, team};
+  });
+
+  const page = document.getElementById('page-recently-fixed');
+  const days = ['2026-06-27','2026-06-26','2026-06-26','2026-06-25','2026-06-24','2026-06-20','2026-06-18'];
+  const times = ['14:22','09:15','22:41','16:08','11:30','03:45','07:12'];
+
+  page.innerHTML = `
+    <div class="filters">
+      <select class="input" onchange="renderRecentlyFixed()"><option>Last 7 days</option><option>Last 30 days</option><option>Last 90 days</option></select>
+      <select class="input"><option>All Teams</option>${[...new Set(withTeams.map(f=>f.team))].map(t=>`<option>${t}</option>`).join('')}</select>
+      <span style="font-size:13px;color:var(--text-secondary);margin-left:auto">${withTeams.length} findings resolved in selected period</span>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Fixed At</th><th>CVE</th><th>Check / Plugin</th><th>Asset</th><th>Severity</th><th>Team</th></tr></thead>
+      <tbody>${withTeams.map((f,i) => `
+        <tr class="clickable" onclick="viewCVE('${f.cve}')">
+          <td class="mono" style="font-size:12px;color:var(--text-muted)">${days[i%days.length]} ${times[i%times.length]}</td>
+          <td class="mono text-link">${f.cve}</td>
+          <td>${f.check}</td>
+          <td class="mono">${f.asset}</td>
+          <td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td>
+          <td>${f.team}</td>
+        </tr>`).join('')}</tbody></table>
+    </div>`;
+}
+
+function showCRDraft(title, fix, severity, scope) {
+  const now = new Date().toISOString().slice(0,10);
+  const cr = `========================================
+CHANGE REQUEST — ${title}
+========================================
+CR ID:        CR-${now.replace(/-/g,'')}-${Math.floor(Math.random()*1000)}
+Date:         ${now}
+Severity:     ${severity}
+Requested By: David — Ampere Security
+Team:         ${TEAMS[selectedTeam].name}
+========================================
+
+SUMMARY
+${fix}
+
+SCOPE
+${scope}
+
+IMPLEMENTATION STEPS
+1. [ ] Validate fix in staging environment
+2. [ ] Schedule maintenance window (coord with ${TEAMS[selectedTeam].name})
+3. [ ] Apply fix to affected assets
+4. [ ] Verify resolution with follow-up vulnerability scan
+5. [ ] Close CR and update VulnDash remediation status
+
+RISK ASSESSMENT
+- Service impact: [TBD — specify downtime/restart requirements]
+- Rollback plan: [TBD — document rollback procedure]
+- Affected services: [TBD — list dependent systems]
+
+APPROVALS
+- Security review:      [  ] Approved / [  ] Rejected
+- Change advisory board: [  ] Approved / [  ] Rejected
+- Implementation:        [  ] Approved / [  ] Rejected
+
+========================================`;
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-header">
+      <span class="modal-title">📋 Draft Change Request</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-sm btn-primary" onclick="copyCRText()">📋 Copy All</button>
+      <button class="btn btn-sm" onclick="showToast('Would open in ticketing system')">🔗 Open in Jira</button>
+    </div>
+    <pre id="crText">${cr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function copyCRText() {
+  const text = document.getElementById('crText').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('✓ Change request copied to clipboard!')).catch(() => showToast('Copy failed — select text manually'));
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ===== SIDEBAR TOGGLE =====
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ===== THEME TOGGLE =====
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+
+// ===== TABS =====
+function switchTab(btn, tabId) {
+  btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  let el = btn.parentElement.nextElementSibling;
+  while (el) {
+    if (el.id && el.id.startsWith('tab-')) {
+      el.style.display = el.id === 'tab-' + tabId ? 'block' : 'none';
+    }
+    el = el.nextElementSibling;
+  }
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', (e) => {
+  if (e.key === '\\' && e.ctrlKey) { e.preventDefault(); toggleSidebar(); }
+  if (e.key === 'Escape') closeModal();
+});
+
+// ===== HOOK UP DASHBOARD SEARCH =====
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('dashboardSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => renderFindingsTable(e.target.value));
+  }
+});
+
+// Attach search handler now (DOM is already loaded)
+setTimeout(() => {
+  const si = document.getElementById('dashboardSearch');
+  if (si) si.addEventListener('input', (e) => { dashFilters.search = e.target.value; dashFilter('search',''); });
+}, 100);
+
+// Also hook up existing onclicks on Solutions page buttons
+document.querySelectorAll('#page-solutions .btn-sm').forEach(btn => {
+  if (btn.textContent.includes('Draft CR')) {
+    const row = btn.closest('tr');
+    const title = row ? row.cells[0].textContent.trim() : 'Fix';
+    btn.onclick = () => showCRDraft(title, title, 'Medium', 'Affected assets TBD');
+  }
+});
+
+// Update setup page buttons
+document.querySelectorAll('#page-setup .btn').forEach(btn => {
+  if (btn.textContent.includes('Upload') || btn.textContent.includes('Refresh')) {
+    btn.onclick = () => showToast('File upload would open in production');
+  }
+});
+
+// ===== INIT =====
+console.log('VulnDash interactive prototype ready');
+console.log('Features: dynamic team detail, CVE detail, search filter, CR draft modal, watch toggles');
+console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
+</script>
+</body>
+</html>
