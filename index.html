@@ -2184,13 +2184,12 @@ function filterGlobalAssets(query) {
 }
 // ===== RENDER VENDOR PAGE — Drill-down donut =====
 let vendorLevel = 0, vendorFamily = '', vendorPlugin = '';
-const FAMILY_COLORS = ['#ff4444','#ff7722','#e6b800','#0066ff','#22cc66','#00aacc','#8899bb','#556888'];
+const SEV_COLORS = {Critical:'#ff4444',High:'#ff7722',Medium:'#e6b800',Low:'#22cc66'};
 
 function renderVendorPage(family, plugin) {
   const page = document.getElementById('page-vendor');
   const active = FINDINGS.filter(f => f.state === 'Active');
 
-  // Categorize findings into families
   function getFamily(check) {
     const c = check.toLowerCase();
     if (c.includes('windows') || c.includes('exchange') || c.includes('kerberos') || c.includes('smb')) return 'Microsoft';
@@ -2206,17 +2205,26 @@ function renderVendorPage(family, plugin) {
     return 'Other';
   }
 
-  const total = active.length;
+  function sevColor(slice) {
+    if (slice.crit > 0) return SEV_COLORS.Critical;
+    if (slice.high > 0) return SEV_COLORS.High;
+    if (slice.med > 0) return SEV_COLORS.Medium;
+    return SEV_COLORS.Low;
+  }
+
   const families = {};
   active.forEach(f => {
     const fam = family || getFamily(f.check);
     const plug = plugin || (family ? f.check : '');
     const key = family ? (plugin ? f.cve : plug) : fam;
-    if (!families[key]) families[key] = {count:0, assets:new Set(), kev:false, crit:0};
+    if (!families[key]) families[key] = {count:0, assets:new Set(), kev:false, crit:0, high:0, med:0, low:0};
     families[key].count++;
     families[key].assets.add(f.asset);
     if (f.kev) families[key].kev = true;
     if (f.severity === 'Critical') families[key].crit++;
+    else if (f.severity === 'High') families[key].high++;
+    else if (f.severity === 'Medium') families[key].med++;
+    else families[key].low++;
   });
 
   const entries = Object.entries(families).sort((a,b) => b[1].count - a[1].count);
@@ -2233,7 +2241,8 @@ function renderVendorPage(family, plugin) {
   slices.forEach(([name, data], i) => {
     const pct = data.count / totalSlices;
     const len = pct * circ;
-    svgSlices += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${FAMILY_COLORS[i % FAMILY_COLORS.length]}" stroke-width="22"
+    const color = sevColor(data);
+    svgSlices += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="22"
       stroke-dasharray="${circ}" stroke-dashoffset="${circ - cumulative}" transform="rotate(-90 ${cx} ${cy})"
       style="cursor:pointer;transition:opacity 0.15s" onmouseenter="this.style.opacity='0.8'" onmouseleave="this.style.opacity='1'"
       onclick="${family && plugin ? `viewCVE('${name}')` : family ? `renderVendorPage('${family}','${name.replace(/'/g,"\\'")}')` : `renderVendorPage('${name.replace(/'/g,"\\'")}')`}"/>`;
@@ -2261,7 +2270,7 @@ function renderVendorPage(family, plugin) {
           <div class="donut-legend">
             ${slices.map(([name, data], i) => `
               <div class="donut-legend-item" style="cursor:pointer" onclick="${family && plugin ? `viewCVE('${name}')` : family ? `renderVendorPage('${family}','${name.replace(/'/g,"\\'")}')` : `renderVendorPage('${name.replace(/'/g,"\\'")}')`}">
-                <span class="donut-legend-dot" style="background:${FAMILY_COLORS[i % FAMILY_COLORS.length]}"></span>
+                <span class="donut-legend-dot" style="background:${sevColor(data)}"></span>
                 ${name} <span class="donut-legend-val">${data.count}</span>
                 ${data.kev ? '<span style="color:var(--danger);font-size:11px">⚠</span>' : ''}
               </div>`).join('')}
