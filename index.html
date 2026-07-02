@@ -1782,7 +1782,7 @@ function renderTeamDetail() {
     </div>
     <div id="tab-team-solutions" class="card" style="display:none">
       <table><thead><tr><th>Solution / Remediation</th><th>CVEs</th><th>Assets</th><th>Severity</th><th></th></tr></thead><tbody>
-        <tr class="clickable"><td>Apply Microsoft Security Update KB5012345 for Print Spooler</td><td class="mono">3</td><td class="mono">${Math.floor(t.assets*0.18)}</td><td><span class="badge badge-high">High</span></td><td><button class="btn btn-sm" onclick="showCRDraft('Microsoft Print Spooler Fix','Apply Microsoft Security Update KB5012345 for Print Spooler','High','${t.assets} assets affected. Disable Print Spooler on DCs.')">📋 Draft CR</button></td></tr>
+        <tr class="clickable"><td>Apply Microsoft Security Update KB5012345 for Print Spooler</td><td class="mono">3</td><td class="mono">${Math.floor(t.assets*0.18)}</td><td><span class="badge badge-high">High</span></td><td><button class="btn btn-sm" onclick="showCRDraft('Microsoft Print Spooler Fix','Apply Microsoft Security Update KB5012345 for Print Spooler','High','${t.assets} assets in ${t.name}')">📋 Draft CR</button></td></tr>
         <tr class="clickable"><td>Deploy Windows Security Baseline GPO — June 2026</td><td class="mono">7</td><td class="mono">${Math.floor(t.assets*0.5)}</td><td><span class="badge badge-medium">Med–High</span></td><td><button class="btn btn-sm" onclick="showCRDraft('Windows Baseline GPO','Deploy Windows Security Baseline GPO — June 2026','Medium','${Math.floor(t.assets*0.5)} assets — standard monthly patch cycle')">📋 Draft CR</button></td></tr>
         <tr class="clickable"><td>Upgrade OpenSSL to 3.0.12+ on all RHEL hosts</td><td class="mono">5</td><td class="mono">${Math.floor(t.assets*0.12)}</td><td><span class="badge badge-medium">Medium</span></td><td><button class="btn btn-sm" onclick="showCRDraft('OpenSSL Upgrade','Upgrade OpenSSL to 3.0.12+','Medium','${Math.floor(t.assets*0.12)} RHEL hosts — requires service restart')">📋 Draft CR</button></td></tr>
       </tbody></table>
@@ -1842,7 +1842,7 @@ function renderCVEDetail(cveId) {
           </div>
         </div>
         <div style="text-align:right">
-          <button class="btn btn-sm btn-primary" onclick="showCRDraft('${cveId}','${c.fix.replace(/'/g,"&#39;")}','${c.severity}','Assets affected by ${cveId}')" style="font-size:13px;margin-bottom:6px">📋 Draft CR</button>
+          <button class="btn btn-sm btn-primary" onclick="showCRDraft('${cveId}','${c.fix.replace(/'/g,"&#39;")}','${c.severity}','Assets: ${[...new Set(FINDINGS.filter(f=>f.cve===cveId&&f.state==='Active').map(f=>f.asset))].join(', ')}')" style="font-size:13px;margin-bottom:6px">📋 Draft CR</button>
           <br>
           <button class="btn btn-sm" onclick="toggleWatchStar(this);showToast(watchState['${cveId}']?'Watching ${cveId}':'Unwatched ${cveId}')" style="font-size:14px">
             <span>${watchState[cveId] ? '★' : '☆'}</span> Watch
