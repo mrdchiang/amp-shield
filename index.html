@@ -111,6 +111,8 @@ td { font-size: 13px; }
 }
 .sidebar-brand .logo { width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0; box-shadow: 0 0 12px var(--accent-glow); }
 .sidebar-brand .title { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; }
+.sidebar-close { display: none; background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 4px 8px; margin-left: auto; border-radius: var(--radius-sm); }
+.sidebar-close:hover { background: var(--bg-hover); color: var(--text-primary); }
 .sidebar.collapsed .title { display: none; }
 .sidebar-nav { padding: 12px 10px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .sidebar-nav .section-label {
@@ -413,6 +415,7 @@ select.input { cursor: pointer; }
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; transform: translateX(-100%); transition: transform 0.25s; }
   .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
   .sidebar.collapsed { width: var(--sidebar-w); transform: translateX(-100%); }
+  .sidebar-close { display: block; }
   .topbar .hamburger { font-size: 20px; padding: 8px; }
   .cols, .cols-3 { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -479,6 +482,7 @@ select.input { cursor: pointer; }
     <div class="sidebar-brand">
       <div class="logo">⚡</div>
       <span class="title">AmpShield</span>
+      <button class="sidebar-close" onclick="toggleSidebar()" title="Close menu">✕</button>
     </div>
     <nav class="sidebar-nav" id="sidebarNav">
       <div class="section-label">Overview</div>
@@ -1488,7 +1492,10 @@ function navigateTo(page) {
 }
 
 document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => navigateTo(item.dataset.page));
+  item.addEventListener('click', () => {
+    navigateTo(item.dataset.page);
+    if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
+  });
 });
 
 // ===== RENDER TEAM DETAIL =====
