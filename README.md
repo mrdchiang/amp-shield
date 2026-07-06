@@ -1,6 +1,6 @@
-# AmpShield — Vulnerability Management Dashboard
+# ShieldView — Vulnerability Management Dashboard
 
-Click-through prototype of an internal vulnerability management dashboard, themed for Ampere Computing.
+Click-through prototype of an internal vulnerability management dashboard, themed for ShieldView.
 
 **Live demo:** https://mrdavidchaing.github.io/amp-shield/
 
