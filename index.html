@@ -1868,9 +1868,9 @@ function renderCVEDetail(cveId) {
           </div>
         </div>
         <div style="text-align:right">
-          <a href="https://mrdchiang.github.io/remflow/#/deploy-fix/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title}','${c.severity}')">🚀 Remediate via PatchFlow</a>
+          <a href="https://mrdchiang.github.io/remflow/#/deploy-fix/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🚀 Remediate via PatchFlow</a>
           <br>
-          <a href="https://mrdchiang.github.io/remflow/#/create-remediation/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title}','${c.severity}')">🛠️ Plan in PatchFlow</a>
+          <a href="https://mrdchiang.github.io/remflow/#/create-remediation/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🛠️ Plan in PatchFlow</a>
           <br>
           <button class="btn btn-sm btn-primary" onclick="showCRDraft('${cveId}','${c.fix.replace(/'/g,"&#39;")}','${c.severity}','Assets: ${[...new Set(FINDINGS.filter(f=>f.cve===cveId&&f.state==='Active').map(f=>f.asset))].join(', ')}')" style="font-size:13px;margin-bottom:6px">📋 Draft CR</button>
           <br>
