@@ -1868,9 +1868,9 @@ function renderCVEDetail(cveId) {
           </div>
         </div>
         <div style="text-align:right">
-          <a href="https://mrdchiang.github.io/remflow/#/deploy-fix/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🚀 Remediate via PatchFlow</a>
+          <a href="https://mrdchiang.github.io/remflow/#/deploy-fix/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🚀 Remediate via RemFlow</a>
           <br>
-          <a href="https://mrdchiang.github.io/remflow/#/create-remediation/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🛠️ Plan in PatchFlow</a>
+          <a href="https://mrdchiang.github.io/remflow/#/create-remediation/${cveId}" target="_blank" class="btn btn-sm" style="font-size:13px;margin-bottom:6px;display:inline-block" onclick="sendToRemFlow('${cveId}','${c.title.replace(/'/g,"&#39;")}','${c.severity}')">🛠️ Plan in RemFlow</a>
           <br>
           <button class="btn btn-sm btn-primary" onclick="showCRDraft('${cveId}','${c.fix.replace(/'/g,"&#39;")}','${c.severity}','Assets: ${[...new Set(FINDINGS.filter(f=>f.cve===cveId&&f.state==='Active').map(f=>f.asset))].join(', ')}')" style="font-size:13px;margin-bottom:6px">📋 Draft CR</button>
           <br>
@@ -2481,9 +2481,9 @@ function sendToRemFlow(cveId, title, severity) {
     }
     localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
     localStorage.setItem('security-tools:last-remediation', JSON.stringify(item));
-    showToast('✓ Sent to PatchFlow — open it to start remediation');
+    showToast('✓ Sent to RemFlow — open it to start remediation');
   } catch(e) {
-    showToast('Failed to save to PatchFlow queue');
+    showToast('Failed to save to RemFlow queue');
   }
 }
 
@@ -2630,7 +2630,7 @@ console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
       const badge = document.createElement('div');
       badge.id = 'cross-tool-badge';
       badge.style.cssText = 'position:fixed;bottom:60px;left:4px;background:var(--accent);color:#fff;border-radius:12px;padding:4px 10px;font-size:11px;font-weight:600;z-index:999;cursor:pointer;box-shadow:0 0 10px var(--accent-glow)';
-      badge.textContent = `🔗 ${pending} pending → PatchFlow`;
+      badge.textContent = `🔗 ${pending} pending → RemFlow`;
       badge.onclick = () => window.open('https://mrdchiang.github.io/remflow/', '_blank');
       document.body.appendChild(badge);
     }

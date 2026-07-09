@@ -46,3 +46,22 @@ xdg-open index.html # Linux
 ```
 
 Or just visit the [live demo](https://mrdavidchaing.github.io/amp-shield/).
+
+## Cross-Tool Pipeline
+
+ShieldView is the first step in a 3-tool remediation pipeline:
+
+```
+ShieldView (find vulns) → RemFlow (remediate) → TheValidator (verify)
+```
+
+ShieldView writes findings to `localStorage` via `sendToRemFlow()`, which RemFlow reads to show pending remediations. When RemFlow completes a deployment, TheValidator picks it up for verification.
+
+| Tool | URL |
+|------|-----|
+| **ShieldView** | https://mrdchiang.github.io/amp-shield/ |
+| **RemFlow** | https://mrdchiang.github.io/remflow/ |
+| **TheValidator** | https://mrdchiang.github.io/thevalidator/ |
+| **Launchpad** | https://mrdchiang.github.io/security-tools/ |
+
+![ShieldView Dashboard](assets/shieldview-dashboard.svg)
