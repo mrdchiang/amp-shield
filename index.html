@@ -1235,7 +1235,7 @@ select.input { cursor: pointer; }
 <script>
 // ════ API Configuration ───────────────────────────────────────
 const API_MODE = "demo"; // "demo" (fake data) | "api" (live backend)
-const API_BASE = "https://security-tools-api.onrender.com/v1";
+const API_BASE = "http://localhost:8000/v1";
 
 async function apiFetch(endpoint, opts = {}) {
   try {
