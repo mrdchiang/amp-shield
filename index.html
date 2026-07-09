@@ -1233,6 +1233,46 @@ select.input { cursor: pointer; }
 </div>
 
 <script>
+// ════ API Configuration ───────────────────────────────────────
+const API_MODE = "demo"; // "demo" (fake data) | "api" (live backend)
+const API_BASE = "https://security-tools-api.onrender.com/v1";
+
+async function apiFetch(endpoint, opts = {}) {
+  try {
+    const res = await fetch(API_BASE + endpoint, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts,
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return await res.json();
+  } catch(e) {
+    console.warn('API fetch failed:', e.message);
+    return null;
+  }
+}
+
+// API-backed actions
+async function apiRemediate(cveId, targets) {
+  const data = await apiFetch('/webhooks/remediate', {
+    method: 'POST',
+    body: JSON.stringify({ cve: cveId, targets: targets || [], severity: 'Critical' }),
+  });
+  return data;
+}
+async function apiDeploy(remId) {
+  return await apiFetch('/webhooks/deploy', {
+    method: 'POST',
+    body: JSON.stringify({ remediation_id: remId }),
+  });
+}
+async function apiImport(source) {
+  return await apiFetch('/webhooks/import', {
+    method: 'POST',
+    body: JSON.stringify({ source: source || 'all' }),
+  });
+}
+// ═══════════════════════════════════════════════════════════════
+
 // ===== DATA STORE =====
 const TEAMS = {
   'infra': { name:'Infrastructure', desc:'Core network, domain controllers, DNS, DHCP, firewalls', total:1204, critical:48, high:312, medium:526, low:318, unactioned:203, aged:89, deltaTotal:-18, deltaCrit:-3, deltaHigh:-7, deltaMed:-5, deltaLow:-3, deltaUnact:-12, deltaAged:-4, assets:67, tags:'env=production, function=infra', sites:'US-East, US-West, EU-Central', assets_list:[
