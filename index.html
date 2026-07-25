@@ -399,6 +399,20 @@ select.input { cursor: pointer; }
 .page { display: none; }
 .page.active { display: block; }
 
+/* Exceptions — expiry color coding */
+.exception-expiry-critical { color: var(--critical); font-weight: 700; }
+.exception-expiry-warning { color: var(--warning); font-weight: 600; }
+.exception-expiry-ok { color: var(--low); }
+/* Exception form modal */
+.exception-form { display: flex; flex-direction: column; gap: 14px; }
+.exception-form label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.exception-form .input, .exception-form textarea { width: 100%; }
+.exception-form textarea { resize: vertical; min-height: 60px; }
+.exception-form .form-error { font-size: 11px; color: var(--critical); display: none; margin-top: 2px; }
+.exception-form .form-error.show { display: block; }
+.exception-form .char-count { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 2px; }
+.exception-form .char-count.warn { color: var(--critical); }
+
 /* Vendor family */
 .family-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .family-row:hover { background: var(--bg-hover); }
@@ -805,6 +819,7 @@ select.input { cursor: pointer; }
       <button class="nav-item" data-page="solutions"><span class="icon">🛠️</span> <span>Solutions</span></button>
       <button class="nav-item" data-page="vendor"><span class="icon">📦</span> <span>Vendor / Family</span></button>
       <button class="nav-item" data-page="recently-fixed"><span class="icon">✅</span> <span>Recently Fixed</span></button>
+      <button class="nav-item" data-page="exceptions"><span class="icon">🚨</span> <span>Exceptions</span></button>
       <div class="section-label">Assets & Teams</div>
       <button class="nav-item" data-page="assets"><span class="icon">🖥️</span> <span>Assets</span></button>
       <button class="nav-item" data-page="teams"><span class="icon">👥</span> <span>Teams</span></button>
@@ -841,7 +856,7 @@ select.input { cursor: pointer; }
       <div class="page active" id="page-dashboard">
         <!-- Stat cards -->
         <div class="stat-grid">
-          <div class="stat-card accent" onclick="dashFilters={};document.querySelector('#page-dashboard select[data-filter=severity]').value='All';renderFindingsTable('');updateStatHighlights()">
+          <div class="stat-card accent" onclick="dashFilters={};document.querySelector('#page-dashboard select[data-filter=severity]').value='All';document.querySelector('#page-dashboard select[data-filter=sinceLastImport]').value='All';renderFindingsTable('');updateStatHighlights()">
             <div class="stat-value">3,847</div>
             <div class="stat-label">Active Findings</div>
             <div class="stat-sub">2,104 distinct CVEs</div>
@@ -891,6 +906,15 @@ select.input { cursor: pointer; }
             <div class="stat-label">Verification Failed</div>
             <div class="stat-sub">RemFlow fix not confirmed</div>
           </div>
+        </div>
+
+        <!-- Trend sparkline -->
+        <div class="card" id="trendSparklineCard" style="margin-bottom:16px;display:none">
+          <div class="card-header" style="margin-bottom:12px">
+            <span class="card-title">📈 Finding Trend (Snapshot History)</span>
+            <span style="font-size:11px;color:var(--text-muted)" id="sparklineMeta">0 snapshots</span>
+          </div>
+          <div id="trendSparkline" style="display:flex;align-items:flex-end;gap:4px;height:80px;padding:4px 0"></div>
         </div>
 
         <!-- Pipeline status bar -->
@@ -975,6 +999,7 @@ select.input { cursor: pointer; }
             <select class="input" data-filter="serverRole" onchange="dashFilter('serverRole',this.value)" id="dashRoleFilter"><option value="All">All Server Roles</option></select>
             <select class="input" data-filter="ou" onchange="dashFilter('ou',this.value)" id="dashOUFilter"><option value="All">All OUs</option></select>
             <select class="input" data-filter="deviceUser" onchange="dashFilter('deviceUser',this.value)" id="dashUserFilter"><option value="All">All Device Users</option></select>
+            <select class="input" data-filter="sinceLastImport" onchange="dashFilter('sinceLastImport',this.value)" id="dashSinceLastImportFilter" style="color:var(--success)"><option value="All">All Findings</option><option value="sinceLastImport">🆕 Since Last Import</option></select>
             <div class="view-toggle" id="viewToggle" style="margin-left:auto">
               <button class="active" onclick="setViewMode('cve',this)">🔍 CVE View</button>
               <button onclick="setViewMode('plugin',this)">📋 Plugin View</button>
@@ -1101,6 +1126,7 @@ select.input { cursor: pointer; }
                 <div class="score-row"><span>Auto-Remediation</span><div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:0%" id="remediationBar"></div></div><span id="remediationPct">0%</span></div>
                 <div class="score-row"><span>KEV Response</span><div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:0%" id="kevBar"></div></div><span id="kevPct">0%</span></div>
                 <div class="score-row"><span>Finding Resolution</span><div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:0%" id="resolutionBar"></div></div><span id="resolutionPct">0%</span></div>
+                <div class="score-row"><span>SLA Compliance</span><div class="progress-bar" style="width:120px"><div class="progress-fill" style="width:0%" id="slaBar"></div></div><span id="slaPct">0%</span></div>
               </div>
             </div>
           </div>
@@ -1426,6 +1452,23 @@ select.input { cursor: pointer; }
       <!-- ========== RECENTLY FIXED ========== -->
       <div class="page" id="page-recently-fixed"></div>
 
+      <!-- ========== EXCEPTIONS ========== -->
+      <div class="page" id="page-exceptions">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🚨 Exceptions — Active Risk Acceptances</span>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="exportExceptionsCSV()">📥 Export CSV</button>
+            </div>
+          </div>
+          <table id="exceptionsTable">
+            <thead><tr><th>CVE</th><th>Asset</th><th>Justification</th><th>Accepted By</th><th>Accepted At</th><th>Expires</th><th>Days Left</th></tr></thead>
+            <tbody id="exceptionsBody"></tbody>
+          </table>
+          <div id="exceptionsEmpty" style="padding:24px;text-align:center;color:var(--text-muted);display:none">No active risk acceptances. All clear! 🎉</div>
+        </div>
+      </div>
+
       <!-- ========== VENDOR / FAMILY ========== -->
       <div class="page" id="page-vendor"></div>
 
@@ -1617,6 +1660,14 @@ select.input { cursor: pointer; }
           <div class="card-title" style="margin-bottom:16px">Changelog</div>
           <div style="display:flex;flex-direction:column;gap:20px">
             <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v6.2.0</div>
+              <div style="font-size:13px">🚨 Phase 2.2 — Expiring Risk Acceptances: Structured exception records with justification, accepted_by, expires_at, and optional compensating controls. Risk Accepted now requires a modal form with inline validation (min 20-char justification). Auto-expiry engine checks every 60s and reverts expired exceptions to Open with audit trail entries. New "Exceptions" sidebar page shows all active risk acceptances sorted by expiry with color coding (<30d red, <60d amber). Export CSV button for exception reports. Max exception duration capped at 365 days.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v6.1.0</div>
+              <div style="font-size:13px">⏰ SLA/due-date engine: severity-based due dates (Critical=15d, High=30d, Medium=90d, Low=180d), CISA KEV BOD 22-01 deadlines, overdue tracking with dashboard stat card, "Days to Due" column with red/amber/green color coding, overdue filter in dropdown, SLA breach penalty in executive grade (>10% overdue docks 1 grade, >25% docks 2), configurable SLA policy on Admin page with persistence via localStorage.</div>
+            </div>
+            <div>
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v6.0.0</div>
               <div style="font-size:13px">🌐 Live CISA KEV JSON feed integration with auto-fetch, localStorage caching, cross-referencing with imported findings, KEV badge with CISA tooltip (dateAdded, dueDate, requiredAction, ransomware use), KEV feed card on Data Sources page with Refresh Now button, graceful fallback to hardcoded KEV data when offline. All KEV counts now update from live data.</div>
             </div>
@@ -1768,7 +1819,7 @@ window.__debugLog=function(m,d){ae({type:'manual',message:String(m),data:d?JSON.
 console.log('['+TN+'] Error catcher active ✓');})();
 
 // ════ localStorage Keys ──────────────────────────────────────
-const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue',SLA_POLICY:'security-tools:sla-policy'};
+const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue',SLA_POLICY:'security-tools:sla-policy',SNAPSHOT_PREFIX:'security-tools:findings-snapshot',SNAPSHOT_COUNT:12,LAST_DIFF:'security-tools:last-diff'};
 
 // ════ API Configuration ───────────────────────────────────────
 const API_MODE = "api"; // "demo" (fake data) | "api" (live backend)
@@ -2193,7 +2244,13 @@ function isOverdue(finding) {
 // Enrich all findings with dueDate (call on data load)
 function enrichDueDates(findings) {
   findings.forEach(f => {
-    if (!f.dueDate) f.dueDate = computeDueDate(f);
+    // Always recompute dueDate for KEV findings (may have changed)
+    // For non-KEV, only set if not already present
+    if (f.kev) {
+      f.dueDate = computeDueDate(f);
+    } else if (!f.dueDate) {
+      f.dueDate = computeDueDate(f);
+    }
   });
 }
 
@@ -3238,15 +3295,35 @@ function handleFileSelect(event, type) {
       return;
     }
     if (type === 'tenable') {
-      const findings = parseTenableCSV(rows);
-      importedFindings = findings;
-      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(findings)); } catch(e) {}
-      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS_META, JSON.stringify({fileName: file.name, count: findings.length, timestamp: new Date().toISOString()})); } catch(e) {}
+      // Save snapshot before importing new findings
+      saveFindingsSnapshot();
+
+      const newFindings = parseTenableCSV(rows);
+
+      // Compute diff before replacing
+      const prior = importedFindings || [];
+      const diff = computeDiff(prior, newFindings);
+
+      // Apply the new data
+      importedFindings = newFindings;
+      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(newFindings)); } catch(e) {}
+      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS_META, JSON.stringify({fileName: file.name, count: newFindings.length, timestamp: new Date().toISOString()})); } catch(e) {}
       if (importedAssets) {
         enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
       }
-      updateImportStatus(type, file.name, findings.length, 'ok');
-      showToast(`✓ Imported ${findings.length} findings from ${file.name}`);
+
+      // Save diff for filters
+      saveDiff(newFindings, diff);
+
+      updateImportStatus(type, file.name, newFindings.length, 'ok');
+      showToast(`✓ Imported ${newFindings.length} findings from ${file.name}`);
+
+      // Show diff modal
+      if (prior.length > 0) {
+        showDiffModal(diff, file.name);
+      } else {
+        showToast(`✓ First import — ${newFindings.length} findings loaded (no prior data to diff)`);
+      }
     } else if (type === 'sccm') {
       const assets = parseSCCMCSV(rows);
       importedAssets = assets;
@@ -3266,6 +3343,7 @@ function handleFileSelect(event, type) {
     updateServerRolesSection();
     updateEOLSummary();
     renderKEVBar();
+    renderTrendSparkline();
   };
   reader.readAsText(file);
 }
@@ -3470,6 +3548,24 @@ FINDINGS.forEach(f => {
   else f.disposition = 'Open';
 });
 
+// Seed exception records for existing Risk Accepted findings with demo data
+FINDINGS.forEach(f => {
+  if (f.disposition === 'Risk Accepted' && !f.exception) {
+    const days = [30, 45, 60, 90, 120, 180, 210, 365];
+    const daysOffset = days[Math.floor(Math.random() * days.length)];
+    const now = new Date();
+    const expiry = new Date(now);
+    expiry.setDate(expiry.getDate() + daysOffset);
+    f.exception = {
+      justification: 'Business risk accepted due to ' + (f.asset.includes('DC') ? 'domain controller isolation with compensating network ACLs and monitoring' : f.asset.includes('DB') ? 'database tier is not internet-facing and has WAF + IDS protection' : f.asset.includes('WEB') ? 'behind load balancer with WAF rules blocking known exploit patterns' : f.asset.includes('SIEM') ? 'SIEM is on isolated management VLAN with no internet access' : f.asset.includes('JENKINS') ? 'CI/CD pipeline is internal-only with strict RBAC' : 'operational necessity with compensating controls in place') + '. Approved by security team.',
+      acceptedBy: ['David Chiang', 'Jane Smith', 'Mike Wilson', 'Rachel Kim'][Math.floor(Math.random() * 4)],
+      acceptedAt: new Date(now.getTime() - Math.floor(Math.random() * 30) * 86400000).toISOString(),
+      expiresAt: expiry.toISOString().slice(0, 10),
+      compensatingControl: f.asset.includes('DC') ? 'Network segmentation, IPS rules, enhanced monitoring' : f.asset.includes('DB') ? 'WAF rules, strict firewall policies, database activity monitoring' : f.asset.includes('WEB') ? 'WAF signature SID-2026-0012, rate limiting, anomaly detection' : f.asset.includes('CSW') ? 'Management plane ACL restricted to jump hosts only' : f.asset.includes('SIEM') ? 'Isolated VLAN, no default gateway, syslog-only access' : f.asset.includes('JENKINS') ? 'RBAC enforced, audit logging enabled, pipeline isolation' : 'Network ACLs and IDS/IPS monitoring'
+    };
+  }
+});
+
 // ===== WATCH STATE =====
 let watchState = {};
 // Default watched: CVE-2026-12345, CVE-2026-11223, CVE-2026-33445, CVE-2026-25501, CVE-2026-29100
@@ -3490,6 +3586,7 @@ const pageTitles = {
   'solutions': 'Solutions',
   'vendor': 'Vendor / Family',
   'recently-fixed': 'Recently Fixed',
+  'exceptions': 'Exceptions',
   'assets': 'Assets',
   'teams': 'Teams',
   'teams-detail': 'Team Detail',
@@ -3520,6 +3617,7 @@ function navigateTo(page) {
   if (page === 'assets') renderAssetsPage();
   if (page === 'vendor') renderVendorPage();
   if (page === 'recently-fixed') renderRecentlyFixed();
+  if (page === 'exceptions') renderExceptions();
   if (page === 'setup') { renderSetupPage(); renderKEVFeedCard(); }
   if (page === 'pipeline') renderPipelinePage();
   if (page === 'admin') initSLAPolicyUI();
@@ -3528,6 +3626,7 @@ function navigateTo(page) {
     updateDashboardStats();
     updateEOLSummary();
     renderKEVBar();
+    renderTrendSparkline();
   }
 }
 
@@ -3556,10 +3655,19 @@ function filterCVEDisposition(val) {
 
 // ===== CHANGE DISPOSITION =====
 function changeDisposition(cve, asset, newDisp) {
+  closeDispDropdown();
+  if (newDisp === 'Risk Accepted') {
+    // Block bare Risk Accepted — require exception form
+    showExceptionForm(cve, asset);
+    return;
+  }
   const data = getActiveFindings();
   const f = data.find(x => x.cve === cve && x.asset === asset);
-  if (f) f.disposition = newDisp;
-  closeDispDropdown();
+  if (f) {
+    f.disposition = newDisp;
+    // Clear any existing exception when switching away from Risk Accepted
+    if (f.exception) delete f.exception;
+  }
   // Re-render current view
   const activePage = document.querySelector('.page.active');
   if (activePage) {
@@ -3571,6 +3679,176 @@ function changeDisposition(cve, asset, newDisp) {
       renderAssetDetail();
     }
   }
+}
+
+// ===== EXCEPTION FORM MODAL =====
+let pendingExceptionCVE = null;
+let pendingExceptionAsset = null;
+
+function showExceptionForm(cve, asset) {
+  pendingExceptionCVE = cve;
+  pendingExceptionAsset = asset;
+  const now = new Date();
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + 365);
+  const maxDateStr = maxDate.toISOString().slice(0, 10);
+  const defaultExpiry = new Date(now);
+  defaultExpiry.setDate(defaultExpiry.getDate() + 90);
+  const defaultExpiryStr = defaultExpiry.toISOString().slice(0, 10);
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-header">
+      <span class="modal-title">🚨 Accept Risk — ${cve}</span>
+      <button class="modal-close" onclick="cancelExceptionForm()">✕</button>
+    </div>
+    <div class="exception-form" id="exceptionForm">
+      <div>
+        <label>Asset</label>
+        <input class="input" value="${asset}" readonly style="background:var(--bg-hover);cursor:default">
+      </div>
+      <div>
+        <label>Justification <span style="color:var(--critical)">*</span> (minimum 20 characters)</label>
+        <textarea class="input" id="excJustification" placeholder="Explain why this risk is being accepted — include business justification, compensating controls, and approval context..." oninput="validateExceptionForm()"></textarea>
+        <div class="form-error" id="excJustificationErr">Justification must be at least 20 characters.</div>
+        <div class="char-count" id="excCharCount">0 / 20 min</div>
+      </div>
+      <div>
+        <label>Accepted By <span style="color:var(--critical)">*</span></label>
+        <input class="input" id="excAcceptedBy" placeholder="Your name or approver name" oninput="validateExceptionForm()">
+        <div class="form-error" id="excAcceptedByErr">Accepted by name is required.</div>
+      </div>
+      <div>
+        <label>Expires At <span style="color:var(--critical)">*</span></label>
+        <input class="input" type="date" id="excExpiresAt" value="${defaultExpiryStr}" min="${now.toISOString().slice(0,10)}" max="${maxDateStr}" oninput="validateExceptionForm()">
+        <div class="form-error" id="excExpiresAtErr">Expiry date is required and must be within 365 days.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Maximum 365 days from now (${maxDateStr})</div>
+      </div>
+      <div>
+        <label>Compensating Control <span style="font-size:11px;color:var(--text-muted)">(optional)</span></label>
+        <textarea class="input" id="excCompensating" placeholder="Describe any compensating controls in place (WAF rules, network segmentation, monitoring, etc.)" style="min-height:50px"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn btn-primary" id="excSubmitBtn" onclick="submitExceptionForm()" disabled>✅ Accept Risk</button>
+        <button class="btn" onclick="cancelExceptionForm()">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('excJustification')?.focus(), 200);
+}
+
+function validateExceptionForm() {
+  const justification = document.getElementById('excJustification')?.value || '';
+  const acceptedBy = document.getElementById('excAcceptedBy')?.value?.trim() || '';
+  const expiresAt = document.getElementById('excExpiresAt')?.value || '';
+  const submitBtn = document.getElementById('excSubmitBtn');
+  const charCountEl = document.getElementById('excCharCount');
+  const justErr = document.getElementById('excJustificationErr');
+  const byErr = document.getElementById('excAcceptedByErr');
+  const expErr = document.getElementById('excExpiresAtErr');
+
+  // Update char count
+  if (charCountEl) {
+    charCountEl.textContent = justification.length + ' / 20 min';
+    charCountEl.className = 'char-count' + (justification.length < 20 && justification.length > 0 ? ' warn' : '');
+  }
+
+  let valid = true;
+
+  // Validate justification
+  if (justification.length < 20) {
+    if (justErr) justErr.classList.add('show');
+    valid = false;
+  } else {
+    if (justErr) justErr.classList.remove('show');
+  }
+
+  // Validate accepted by
+  if (!acceptedBy) {
+    if (byErr) byErr.classList.add('show');
+    valid = false;
+  } else {
+    if (byErr) byErr.classList.remove('show');
+  }
+
+  // Validate expiry
+  if (!expiresAt) {
+    if (expErr) expErr.classList.add('show');
+    valid = false;
+  } else {
+    const expDate = new Date(expiresAt + 'T00:00:00Z');
+    const now = new Date();
+    const maxDate = new Date(now);
+    maxDate.setDate(maxDate.getDate() + 365);
+    if (isNaN(expDate.getTime()) || expDate <= now || expDate > maxDate) {
+      if (expErr) expErr.classList.add('show');
+      valid = false;
+    } else {
+      if (expErr) expErr.classList.remove('show');
+    }
+  }
+
+  if (submitBtn) submitBtn.disabled = !valid;
+}
+
+function submitExceptionForm() {
+  const justification = document.getElementById('excJustification')?.value || '';
+  const acceptedBy = document.getElementById('excAcceptedBy')?.value?.trim() || '';
+  const expiresAt = document.getElementById('excExpiresAt')?.value || '';
+  const compensatingControl = document.getElementById('excCompensating')?.value?.trim() || '';
+
+  // Final validation
+  if (justification.length < 20 || !acceptedBy || !expiresAt) {
+    validateExceptionForm();
+    return;
+  }
+
+  const expDate = new Date(expiresAt + 'T00:00:00Z');
+  const now = new Date();
+  const maxDate = new Date(now);
+  maxDate.setDate(maxDate.getDate() + 365);
+  if (isNaN(expDate.getTime()) || expDate <= now || expDate > maxDate) {
+    validateExceptionForm();
+    return;
+  }
+
+  const data = getActiveFindings();
+  const f = data.find(x => x.cve === pendingExceptionCVE && x.asset === pendingExceptionAsset);
+  if (f) {
+    f.disposition = 'Risk Accepted';
+    f.exception = {
+      justification: justification,
+      acceptedBy: acceptedBy,
+      acceptedAt: new Date().toISOString(),
+      expiresAt: expiresAt,
+      compensatingControl: compensatingControl
+    };
+  }
+
+  closeModal();
+  showToast('✓ Risk accepted with structured exception — expires ' + expiresAt);
+
+  // Re-render current view
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const pageId = activePage.id;
+    if (pageId === 'page-cve-detail') {
+      const cveId = document.querySelector('#page-cve-detail .mono')?.textContent?.trim();
+      if (cveId) renderCVEDetail(cveId);
+    } else if (pageId === 'page-asset-detail') {
+      renderAssetDetail();
+    }
+  }
+
+  pendingExceptionCVE = null;
+  pendingExceptionAsset = null;
+}
+
+function cancelExceptionForm() {
+  pendingExceptionCVE = null;
+  pendingExceptionAsset = null;
+  closeModal();
+  showToast('Risk acceptance cancelled — state unchanged');
 }
 
 function toggleDispDropdown(el, cve, asset) {
@@ -4545,6 +4823,10 @@ function updateDashboardStats() {
   setPct('kevPct', 'kevBar', kevPct);
   setPct('resolutionPct', 'resolutionBar', resolutionPct);
 
+  // SLA Compliance: % of active findings NOT overdue (with due date)
+  const slaPct = active.length > 0 ? Math.round(((active.length - overdueActive.length) / active.length) * 100) : 100;
+  setPct('slaPct', 'slaBar', slaPct);
+
   // Update server roles section
   updateServerRolesSection();
   // Update EOL summary
@@ -4631,6 +4913,10 @@ function renderFindingsTable(filter, opts) {
       const worst = getWorstEOLStatus(eolResults);
       if (worst !== opts.eol) return false;
     }
+    if (opts.sinceLastImport && opts.sinceLastImport === 'sinceLastImport') {
+      // Only show findings that are new or reopened since last import
+      if (!f._diffStatus || (f._diffStatus !== 'new' && f._diffStatus !== 'reopened')) return false;
+    }
     return true;
   });
 
@@ -4640,11 +4926,12 @@ function renderFindingsTable(filter, opts) {
     const groups = {};
     filtered.forEach(f => {
       const key = f.cve;
-      if (!groups[key]) groups[key] = {cve: f.cve, check: f.check, severity: f.severity, count: 0, assets: new Set(), kev: f.kev, firstSeen: f.firstSeen};
+      if (!groups[key]) groups[key] = {cve: f.cve, check: f.check, severity: f.severity, count: 0, assets: new Set(), kev: f.kev, firstSeen: f.firstSeen, dueDate: f.dueDate};
       groups[key].count++;
       groups[key].assets.add(f.asset);
       if (f.kev) groups[key].kev = true;
       if (f.firstSeen < groups[key].firstSeen) groups[key].firstSeen = f.firstSeen;
+      if (f.dueDate && (!groups[key].dueDate || f.dueDate < groups[key].dueDate)) groups[key].dueDate = f.dueDate;
     });
 
     const entries = Object.values(groups).sort((a,b) => b.count - a.count);
@@ -4736,7 +5023,7 @@ function dashFilter(type, value) {
     dashFilters[type] = value;
   }
   // Update dropdowns to reflect state
-  ['severity','state','serverRole','ou','deviceUser','eol'].forEach(t => {
+  ['severity','state','serverRole','ou','deviceUser','eol','sinceLastImport'].forEach(t => {
     const sel = document.querySelector(`#page-dashboard select[data-filter="${t}"]`);
     if (sel) sel.value = dashFilters[t] || 'All';
   });
@@ -5445,6 +5732,273 @@ document.querySelectorAll('#page-solutions .btn-sm').forEach(btn => {
 // Initialize drop zones for CSV import
 initDropZones();
 
+// ════ SNAPSHOT STORAGE ──────────────────────────────────────
+let snapshotIndex = 0; // circular counter
+
+function loadSnapshots() {
+  const snapshots = [];
+  for (let i = 0; i < KEYS.SNAPSHOT_COUNT; i++) {
+    try {
+      const raw = localStorage.getItem(KEYS.SNAPSHOT_PREFIX + '-' + i);
+      if (raw) snapshots.push(JSON.parse(raw));
+    } catch(e) {}
+  }
+  return snapshots;
+}
+
+function saveFindingsSnapshot() {
+  const current = getActiveFindings();
+  if (!current || current.length === 0) return;
+  const snapshot = {
+    timestamp: new Date().toISOString(),
+    findings: JSON.parse(JSON.stringify(current)), // deep clone
+    activeCount: current.filter(f => f.state === 'Active').length,
+  };
+  const key = KEYS.SNAPSHOT_PREFIX + '-' + (snapshotIndex % KEYS.SNAPSHOT_COUNT);
+  try { localStorage.setItem(key, JSON.stringify(snapshot)); } catch(e) {}
+  snapshotIndex = (snapshotIndex + 1) % KEYS.SNAPSHOT_COUNT;
+}
+
+function getLatestSnapshot() {
+  const snapshots = loadSnapshots();
+  if (snapshots.length === 0) return null;
+  // Return the one with the most recent timestamp
+  snapshots.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+  return snapshots[0];
+}
+
+// ════ DIFF COMPUTATION ──────────────────────────────────────
+function computeDiff(prior, incoming) {
+  // Build a key for each finding: cve + asset
+  const priorMap = {};
+  prior.forEach(f => {
+    const key = (f.cve || '') + '|' + (f.asset || '');
+    priorMap[key] = f;
+  });
+
+  const incomingMap = {};
+  incoming.forEach(f => {
+    const key = (f.cve || '') + '|' + (f.asset || '');
+    incomingMap[key] = f;
+  });
+
+  const diff = { new: [], resolved: [], reopened: [], unchanged: [] };
+  const allKeys = new Set([...Object.keys(priorMap), ...Object.keys(incomingMap)]);
+
+  allKeys.forEach(key => {
+    const p = priorMap[key];
+    const i = incomingMap[key];
+    if (!p && i) {
+      // New: was not in prior, now present
+      diff.new.push({ ...i, _diffStatus: 'new' });
+    } else if (p && !i) {
+      // Resolved: was in prior, now absent
+      diff.resolved.push({ ...p, _diffStatus: 'resolved' });
+    } else if (p && i) {
+      // Reopened: was Fixed, now Active
+      if (p.state === 'Fixed' && i.state === 'Active') {
+        diff.reopened.push({ ...i, _diffStatus: 'reopened' });
+      } else {
+        diff.unchanged.push({ ...i, _diffStatus: 'unchanged' });
+      }
+    }
+  });
+
+  return diff;
+}
+
+function saveDiff(findings, diff) {
+  // Tag findings with their diff status in memory so filters can use it
+  const statusMap = {};
+  diff.new.forEach(f => { statusMap[(f.cve || '') + '|' + (f.asset || '')] = 'new'; });
+  diff.reopened.forEach(f => { statusMap[(f.cve || '') + '|' + (f.asset || '')] = 'reopened'; });
+
+  findings.forEach(f => {
+    const key = (f.cve || '') + '|' + (f.asset || '');
+    f._diffStatus = statusMap[key] || 'unchanged';
+  });
+
+  // Store last diff data for the modal
+  try {
+    localStorage.setItem(KEYS.LAST_DIFF, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      new: diff.new.length,
+      resolved: diff.resolved.length,
+      reopened: diff.reopened.length,
+      unchanged: diff.unchanged.length,
+      newItems: diff.new.slice(0, 100).map(f => ({ cve: f.cve, check: f.check, asset: f.asset, severity: f.severity, state: f.state })),
+      resolvedItems: diff.resolved.slice(0, 100).map(f => ({ cve: f.cve, check: f.check, asset: f.asset, severity: f.severity, state: f.state })),
+      reopenedItems: diff.reopened.slice(0, 100).map(f => ({ cve: f.cve, check: f.check, asset: f.asset, severity: f.severity, state: f.state })),
+      unchangedItems: diff.unchanged.slice(0, 100).map(f => ({ cve: f.cve, check: f.check, asset: f.asset, severity: f.severity, state: f.state })),
+    }));
+  } catch(e) {}
+}
+
+// ════ POST-IMPORT DIFF MODAL ──────────────────────────────────
+function showDiffModal(diff, fileName) {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  if (!overlay || !content) return;
+
+  content.innerHTML = `
+    <div class="modal-header">
+      <span class="modal-title">📊 Import Complete — Diff Summary</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${fileName}</div>
+
+    <!-- 4 count cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+      <div class="diff-card" onclick="showDiffDrilldown('new')" style="background:rgba(34,204,102,0.1);border:1px solid rgba(34,204,102,0.3);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all 0.15s">
+        <div style="font-size:28px;font-weight:700;color:var(--success)">${diff.new.length}</div>
+        <div style="font-size:11px;color:var(--success);text-transform:uppercase;letter-spacing:0.05em">🆕 New</div>
+      </div>
+      <div class="diff-card" onclick="showDiffDrilldown('resolved')" style="background:rgba(0,102,255,0.1);border:1px solid rgba(0,102,255,0.3);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all 0.15s">
+        <div style="font-size:28px;font-weight:700;color:var(--accent)">${diff.resolved.length}</div>
+        <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em">✅ Resolved</div>
+      </div>
+      <div class="diff-card" onclick="showDiffDrilldown('reopened')" style="background:rgba(255,153,0,0.1);border:1px solid rgba(255,153,0,0.3);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all 0.15s">
+        <div style="font-size:28px;font-weight:700;color:var(--warning)">${diff.reopened.length}</div>
+        <div style="font-size:11px;color:var(--warning);text-transform:uppercase;letter-spacing:0.05em">🔄 Reopened</div>
+      </div>
+      <div class="diff-card" onclick="showDiffDrilldown('unchanged')" style="background:rgba(136,153,187,0.1);border:1px solid rgba(136,153,187,0.3);border-radius:var(--radius);padding:14px;text-align:center;cursor:pointer;transition:all 0.15s">
+        <div style="font-size:28px;font-weight:700;color:var(--text-secondary)">${diff.unchanged.length}</div>
+        <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em">⬜ Unchanged</div>
+      </div>
+    </div>
+
+    <!-- Drill-down area -->
+    <div id="diffDrilldown" style="max-height:300px;overflow-y:auto;display:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px"></div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-sm" onclick="closeModal()">Dismiss</button>
+      <button class="btn btn-sm btn-primary" onclick="closeModal();dashFilter('sinceLastImport','sinceLastImport');navigateTo('dashboard')">📋 View New Findings</button>
+    </div>
+  `;
+
+  // Store diff data for drilldown
+  window._lastDiff = diff;
+
+  overlay.classList.add('show');
+
+  // Hover effects for cards
+  setTimeout(() => {
+    document.querySelectorAll('.diff-card').forEach(card => {
+      card.onmouseenter = () => { card.style.borderColor = 'var(--accent)'; card.style.boxShadow = 'var(--shadow)'; };
+      card.onmouseleave = () => { card.style.borderColor = ''; card.style.boxShadow = ''; };
+    });
+  }, 50);
+}
+
+function showDiffDrilldown(category) {
+  const diff = window._lastDiff;
+  if (!diff) return;
+  const items = diff[category + 'Items'] || diff[category] || [];
+  const container = document.getElementById('diffDrilldown');
+  if (!container) return;
+
+  const colors = { new: 'var(--success)', resolved: 'var(--accent)', reopened: 'var(--warning)', unchanged: 'var(--text-muted)' };
+  const labels = { new: 'New', resolved: 'Resolved', reopened: 'Reopened', unchanged: 'Unchanged' };
+  const icons = { new: '🆕', resolved: '✅', reopened: '🔄', unchanged: '⬜' };
+
+  if (items.length === 0) {
+    container.style.display = 'block';
+    container.innerHTML = `<div style="padding:12px;color:var(--text-muted);text-align:center">No ${labels[category]} findings.</div>`;
+    return;
+  }
+
+  // Use summary data from LAST_DIFF for drilldown items
+  let drillItems = [];
+  try {
+    const lastDiff = JSON.parse(localStorage.getItem(KEYS.LAST_DIFF) || '{}');
+    const key = category + 'Items';
+    drillItems = lastDiff[key] || [];
+  } catch(e) {}
+
+  if (drillItems.length === 0) {
+    // Fall back to raw items from diff
+    drillItems = (diff[category] || []).slice(0, 50).map(f => ({
+      cve: f.cve || '', check: f.check || '', asset: f.asset || '', severity: f.severity || 'Medium', state: f.state || 'Active'
+    }));
+  }
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:${colors[category] || 'var(--text-primary)'}">${icons[category] || ''} ${labels[category] || category} — ${drillItems.length} findings</div>
+    <table style="font-size:12px">
+      <thead><tr><th>CVE</th><th>Check / Plugin</th><th>Asset</th><th>Severity</th><th>State</th></tr></thead>
+      <tbody>
+        ${drillItems.map(f => `<tr>
+          <td class="mono" style="font-size:11px">${f.cve}</td>
+          <td style="font-size:12px">${f.check}</td>
+          <td class="mono" style="font-size:11px">${f.asset}</td>
+          <td><span class="badge badge-${(f.severity || 'medium').toLowerCase()}">${f.severity}</span></td>
+          <td><span class="badge badge-neutral">${f.state}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // Highlight the clicked card
+  document.querySelectorAll('.diff-card').forEach((c, i) => {
+    const cats = ['new','resolved','reopened','unchanged'];
+    if (cats[i] === category) {
+      c.style.borderColor = 'var(--accent)';
+      c.style.boxShadow = '0 0 12px var(--accent-glow)';
+    } else {
+      c.style.borderColor = '';
+      c.style.boxShadow = '';
+    }
+  });
+}
+
+// ════ TREND SPARKLINE ─────────────────────────────────────────
+function renderTrendSparkline() {
+  const card = document.getElementById('trendSparklineCard');
+  const sparkEl = document.getElementById('trendSparkline');
+  const metaEl = document.getElementById('sparklineMeta');
+  if (!card || !sparkEl) return;
+
+  const snapshots = loadSnapshots();
+  if (snapshots.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  if (metaEl) metaEl.textContent = snapshots.length + ' snapshots';
+
+  // Sort by timestamp
+  snapshots.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+
+  const counts = snapshots.map(s => s.activeCount || 0);
+  const maxCount = Math.max(...counts, 1);
+  const minCount = Math.min(...counts, 0);
+  const range = Math.max(maxCount - minCount, 1);
+  const barHeight = (v) => Math.max(4, Math.round(((v - minCount) / range) * 68) + 4);
+
+  // Determine which snapshot is the current one (most recent)
+  const currentIdx = snapshots.length - 1;
+
+  sparkEl.innerHTML = snapshots.map((s, i) => {
+    const h = barHeight(s.activeCount || 0);
+    const isCurrent = i === currentIdx;
+    const barColor = isCurrent ? 'var(--accent)' : 'var(--bg-hover)';
+    const barBorder = isCurrent ? 'var(--accent)' : 'var(--border)';
+    const label = (i % Math.max(1, Math.floor(snapshots.length / 6)) === 0 || i === currentIdx)
+      ? `<div style="font-size:9px;color:var(--text-muted);text-align:center;margin-top:2px;white-space:nowrap">${(s.timestamp || '').slice(0,10)}</div>`
+      : '';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;min-width:0">
+      <div style="font-size:9px;color:${isCurrent ? 'var(--accent)' : 'var(--text-muted)'};font-weight:${isCurrent ? '700' : '400'};margin-bottom:2px">${s.activeCount || 0}</div>
+      <div style="width:100%;height:${h}px;background:${barColor};border:1px solid ${barBorder};border-radius:3px 3px 0 0;transition:height 0.3s;cursor:pointer" title="${s.timestamp || ''}: ${s.activeCount || 0} active"></div>
+      ${label}
+    </div>`;
+  }).join('');
+}
+
+// CSV EXPORT
+
 // ===== CSV EXPORT =====
 function exportCSV() {
   // Get currently visible findings from the dashboard table, or fall back to all active
@@ -5562,6 +6116,165 @@ function drainVerifiedQueue() {
   }
 }
 
+// ===== EXCEPTIONS VIEW =====
+function renderExceptions() {
+  const allFindings = getActiveFindings();
+  const exceptions = allFindings.filter(f => f.disposition === 'Risk Accepted' && f.state === 'Active');
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  // Sort by expires_at (soonest first)
+  exceptions.sort((a, b) => {
+    const aExp = a.exception?.expiresAt || '9999-12-31';
+    const bExp = b.exception?.expiresAt || '9999-12-31';
+    return aExp.localeCompare(bExp);
+  });
+
+  const tbody = document.getElementById('exceptionsBody');
+  const emptyEl = document.getElementById('exceptionsEmpty');
+  if (!tbody) return;
+
+  if (exceptions.length === 0) {
+    tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  tbody.innerHTML = exceptions.map(f => {
+    const exc = f.exception || {};
+    const justification = (exc.justification || '—');
+    const truncated = justification.length > 60 ? justification.slice(0, 57) + '...' : justification;
+    const acceptedBy = exc.acceptedBy || '—';
+    const acceptedAt = exc.acceptedAt ? exc.acceptedAt.slice(0, 10) : '—';
+    const expiresAt = exc.expiresAt || '—';
+
+    // Calculate days left
+    let daysLeft = null;
+    let daysClass = '';
+    if (exc.expiresAt) {
+      const expDate = new Date(exc.expiresAt + 'T00:00:00Z');
+      if (!isNaN(expDate.getTime())) {
+        const diffMs = expDate.getTime() - today.getTime();
+        daysLeft = Math.round(diffMs / 86400000);
+        if (daysLeft < 0) daysClass = 'exception-expiry-critical';
+        else if (daysLeft < 30) daysClass = 'exception-expiry-critical';
+        else if (daysLeft < 60) daysClass = 'exception-expiry-warning';
+        else daysClass = 'exception-expiry-ok';
+      }
+    }
+
+    const daysLabel = daysLeft === null ? '—' :
+      daysLeft < 0 ? `<span class="${daysClass}">Expired ${Math.abs(daysLeft)}d ago</span>` :
+      daysLeft === 0 ? `<span class="${daysClass}">Today</span>` :
+      `<span class="${daysClass}">${daysLeft}d</span>`;
+
+    return `<tr class="clickable" onclick="viewCVE('${f.cve}')">
+      <td class="mono text-link">${f.cve}</td>
+      <td class="mono">${f.asset}</td>
+      <td title="${justification.replace(/"/g, '&quot;')}">${truncated}</td>
+      <td>${acceptedBy}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${acceptedAt}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${expiresAt}</td>
+      <td>${daysLabel}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportExceptionsCSV() {
+  const allFindings = getActiveFindings();
+  const exceptions = allFindings.filter(f => f.disposition === 'Risk Accepted' && f.state === 'Active');
+  exceptions.sort((a, b) => {
+    const aExp = a.exception?.expiresAt || '9999-12-31';
+    const bExp = b.exception?.expiresAt || '9999-12-31';
+    return aExp.localeCompare(bExp);
+  });
+
+  const headers = ['CVE', 'Asset', 'Justification', 'Accepted By', 'Accepted At', 'Expires At', 'Days Left', 'Compensating Control'];
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
+  const rows = exceptions.map(f => {
+    const exc = f.exception || {};
+    let daysLeft = '';
+    if (exc.expiresAt) {
+      const expDate = new Date(exc.expiresAt + 'T00:00:00Z');
+      if (!isNaN(expDate.getTime())) {
+        daysLeft = Math.round((expDate.getTime() - today.getTime()) / 86400000).toString();
+      }
+    }
+    return [
+      f.cve,
+      `"${(f.asset || '').replace(/"/g, '""')}"`,
+      `"${(exc.justification || '').replace(/"/g, '""')}"`,
+      `"${(exc.acceptedBy || '').replace(/"/g, '""')}"`,
+      exc.acceptedAt ? exc.acceptedAt.slice(0, 10) : '',
+      exc.expiresAt || '',
+      daysLeft,
+      `"${(exc.compensatingControl || '').replace(/"/g, '""')}"`
+    ];
+  });
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `shieldview-exceptions-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`✓ Exported ${exceptions.length} exceptions to CSV`);
+}
+
+// ===== AUTO-EXPIRY — Check for expired risk acceptances =====
+function checkExceptionExpiry() {
+  const allFindings = getActiveFindings();
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  let expiredCount = 0;
+
+  allFindings.forEach(f => {
+    if (f.disposition !== 'Risk Accepted' || f.state !== 'Active') return;
+    if (!f.exception || !f.exception.expiresAt) return;
+
+    const expDate = new Date(f.exception.expiresAt + 'T00:00:00Z');
+    if (isNaN(expDate.getTime())) return;
+
+    if (expDate < today) {
+      // Auto-revert to Open
+      f.disposition = 'Open';
+      const oldException = f.exception;
+      delete f.exception;
+      // Append audit entry
+      if (!Array.isArray(f.auditTrail)) f.auditTrail = [];
+      f.auditTrail.push({
+        fromState: 'Risk Accepted',
+        toState: 'Active (Open)',
+        reason: `Exception expired — auto-reverted to Active. Was accepted by ${oldException.acceptedBy || 'unknown'} on ${oldException.acceptedAt ? oldException.acceptedAt.slice(0, 10) : 'unknown'}.`,
+        source: 'system',
+        timestamp: new Date().toISOString()
+      });
+      expiredCount++;
+    }
+  });
+
+  if (expiredCount > 0) {
+    showToast(`⏰ ${expiredCount} exception${expiredCount !== 1 ? 's' : ''} expired — auto-reverted to Active`);
+    // Refresh UI if on exceptions page or dashboard
+    const activePage = document.querySelector('.page.active');
+    if (activePage) {
+      const pageId = activePage.id;
+      if (pageId === 'page-exceptions') renderExceptions();
+      if (pageId === 'page-dashboard') {
+        updateDashboardStats();
+        renderFindingsTable(dashFilters.search || '', dashFilters);
+      }
+    }
+  }
+}
+
 // ===== INIT =====
 loadImportedData();
 buildEOLCache();
@@ -5580,13 +6293,17 @@ populateFilterDropdowns();
 updateServerRolesSection();
 updateEOLSummary();
 renderPipelineBar();
+renderTrendSparkline();
 // Drain verified queue on load (after data is initialized)
 drainVerifiedQueue();
 // Kick off async KEV fetch (won't block UI)
 fetchKEVData(false);
 // Drain verified queue every 30 seconds
 setInterval(drainVerifiedQueue, 30000);
-console.log('ShieldView v7 ready — Snipe-IT API asset import, Live CISA KEV feed, executive page: team assignment, trend chart, risk score, exec export');
+// Auto-expiry check for risk acceptances
+checkExceptionExpiry();
+setInterval(checkExceptionExpiry, 60000);
+console.log('ShieldView v7.2 ready — Snipe-IT API asset import, Live CISA KEV feed, Expiring Risk Acceptances with structured exceptions, executive page: team assignment, trend chart, risk score, exec export');
 console.log('Features: Tenable CSV, SCCM/PDQ CSV, Snipe-IT REST API, Live CISA KEV JSON, view toggle, role/OU/user/EOL/warranty filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 
