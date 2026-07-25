@@ -701,6 +701,77 @@ select.input { cursor: pointer; }
   .team-exec-grid { grid-template-columns: 1fr; }
   .team-exec-stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===== PIPELINE STATUS BAR ===== */
+.pipeline-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; margin-bottom: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.pipeline-bar-icon { font-size: 16px; }
+.pipeline-bar-text { color: var(--text-secondary); flex: 1; min-width: 200px; }
+.pipeline-bar-text strong { color: var(--text-primary); }
+.pipeline-bar-ts { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.pipeline-bar .btn-sm { font-size: 12px; padding: 4px 12px; white-space: nowrap; }
+.pipeline-bar .btn-sm.btn-warn { background: var(--warning); color: #000; border: none; border-radius: var(--radius-sm); }
+.pipeline-bar-empty { color: var(--text-muted); font-style: italic; }
+
+/* ===== PIPELINE PAGE ===== */
+.pipeline-flow {
+  display: flex; align-items: center; gap: 0; 
+  flex-wrap: wrap; justify-content: center;
+  padding: 8px 0;
+}
+.pipeline-step {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  min-width: 200px;
+  text-align: center;
+  position: relative;
+}
+.pipeline-step-header {
+  display: flex; align-items: center; gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.pipeline-step-icon {
+  font-size: 24px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-hover);
+}
+.pipeline-step-name { font-weight: 700; font-size: 15px; color: var(--text-primary); }
+.pipeline-step-status {
+  font-size: 12px; padding: 3px 10px; border-radius: 12px;
+  font-weight: 600; display: inline-block; margin-bottom: 8px;
+}
+.pipeline-step-status.idle { background: var(--bg-hover); color: var(--text-muted); }
+.pipeline-step-status.sent { background: var(--info-bg); color: var(--info); }
+.pipeline-step-status.verified { background: var(--low-bg); color: var(--low); }
+.pipeline-step-status.error { background: var(--critical-bg); color: var(--critical); }
+.pipeline-step-meta { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.pipeline-step-meta strong { color: var(--text-secondary); }
+.pipeline-arrow {
+  font-size: 24px; color: var(--text-muted);
+  margin: 0 8px; flex-shrink: 0;
+}
+.pipeline-arrow.active { color: var(--accent); }
+.pipeline-arrow.done { color: var(--success); }
+.pipeline-data-table { margin-top: 24px; }
+.pipeline-data-table th:first-child { width: 140px; }
+
+@media (max-width: 900px) {
+  .pipeline-flow { flex-direction: column; }
+  .pipeline-arrow { transform: rotate(90deg); margin: 4px 0; }
+  .pipeline-bar { flex-direction: column; align-items: flex-start; }
+}
 </style>
 </head>
 <body>
@@ -728,6 +799,7 @@ select.input { cursor: pointer; }
       <div class="section-label">Management</div>
       <button class="nav-item" data-page="setup"><span class="icon">⚙️</span> <span>Data Sources</span></button>
       <button class="nav-item" data-page="admin"><span class="icon">🔐</span> <span>Admin</span></button>
+      <button class="nav-item" data-page="pipeline"><span class="icon">🔗</span> <span>Pipeline</span></button>
       <button class="nav-item" data-page="changelog"><span class="icon">📝</span> <span>Changelog</span></button>
     </nav>
     <div class="sidebar-footer">
@@ -797,6 +869,18 @@ select.input { cursor: pointer; }
             <div class="stat-label">KEV Exploited</div>
             <div class="stat-sub">CISA Known Exploited</div>
           </div>
+        </div>
+
+        <!-- Pipeline status bar -->
+        <div class="pipeline-bar" id="pipelineBar" style="display:none">
+          <span class="pipeline-bar-icon">📤</span>
+          <span class="pipeline-bar-text" id="pipelineBarText"></span>
+          <span class="pipeline-bar-ts" id="pipelineBarTs"></span>
+          <button class="btn btn-sm" onclick="window.open('https://mrdchiang.github.io/remflow/','_blank')">🔍 View in RemFlow</button>
+          <button class="btn btn-sm btn-warn" onclick="resendAllFindings()">🔄 Resend All</button>
+        </div>
+        <div class="pipeline-bar pipeline-bar-empty" id="pipelineBarEmpty">
+          📤 No findings sent to RemFlow yet. Use "Remediate via RemFlow" from CVE detail to start the pipeline.
         </div>
 
         <!-- Charts + Findings row -->
@@ -1475,6 +1559,75 @@ select.input { cursor: pointer; }
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-05-01 — v2.0.0</div>
               <div style="font-size:13px">Initial release: scanner importer, KEV feed, dashboard, findings list, CVE detail with per-asset status tracking.</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PIPELINE ========== -->
+      <div class="page" id="page-pipeline">
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title" style="margin-bottom:20px">🔄 Security Tool Pipeline</div>
+          <div class="pipeline-flow" id="pipelineFlow">
+            <!-- ShieldView -->
+            <div class="pipeline-step">
+              <div class="pipeline-step-header">
+                <div class="pipeline-step-icon">⚡</div>
+                <span class="pipeline-step-name">ShieldView</span>
+              </div>
+              <div class="pipeline-step-status idle" id="pipe-sv-status">idle</div>
+              <div class="pipeline-step-meta" id="pipe-sv-meta">
+                <div>Source of truth</div>
+                <div>Vulnerability scanning</div>
+              </div>
+            </div>
+            <div class="pipeline-arrow" id="pipe-arrow-1">→</div>
+            <!-- RemFlow -->
+            <div class="pipeline-step">
+              <div class="pipeline-step-header">
+                <div class="pipeline-step-icon">🚀</div>
+                <span class="pipeline-step-name">RemFlow</span>
+              </div>
+              <div class="pipeline-step-status idle" id="pipe-rf-status">idle</div>
+              <div class="pipeline-step-meta" id="pipe-rf-meta">
+                <div>Remediation workflow</div>
+                <div>Deployment orchestration</div>
+              </div>
+            </div>
+            <div class="pipeline-arrow" id="pipe-arrow-2">→</div>
+            <!-- TheValidator -->
+            <div class="pipeline-step">
+              <div class="pipeline-step-header">
+                <div class="pipeline-step-icon">✅</div>
+                <span class="pipeline-step-name">TheValidator</span>
+              </div>
+              <div class="pipeline-step-status idle" id="pipe-tv-status">idle</div>
+              <div class="pipeline-step-meta" id="pipe-tv-meta">
+                <div>Post-deployment verification</div>
+                <div>Validation reporting</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sent findings detail -->
+        <div class="card" id="pipeDataCard" style="display:none">
+          <div class="card-header">
+            <span class="card-title">📤 Findings Sent to RemFlow</span>
+            <span style="font-size:12px;color:var(--text-muted)" id="pipeDataCount"></span>
+          </div>
+          <table class="pipeline-data-table">
+            <thead>
+              <tr><th>CVE</th><th>Title</th><th>Severity</th><th>Sent At</th><th>Status</th></tr>
+            </thead>
+            <tbody id="pipeDataBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Verification results (placeholder for TheValidator) -->
+        <div class="card" id="pipeVerifyCard" style="display:none;margin-top:20px">
+          <div class="card-title" style="margin-bottom:16px">✅ Verification Results (TheValidator)</div>
+          <div style="font-size:13px;color:var(--text-muted);font-style:italic">
+            Verification results will appear here once TheValidator processes completed remediations from RemFlow.
           </div>
         </div>
       </div>
@@ -2559,6 +2712,7 @@ const pageTitles = {
   'asset-detail': 'Asset Detail',
   'setup': 'Data Sources',
   'admin': 'Admin',
+  'pipeline': 'Pipeline',
   'changelog': 'Changelog'
 };
 
@@ -2583,6 +2737,7 @@ function navigateTo(page) {
   if (page === 'vendor') renderVendorPage();
   if (page === 'recently-fixed') renderRecentlyFixed();
   if (page === 'setup') renderSetupPage();
+  if (page === 'pipeline') renderPipelinePage();
   if (page === 'dashboard') {
     renderFindingsTable();
     updateDashboardStats();
@@ -4171,6 +4326,129 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('show');
 }
 
+// ===== PIPELINE STATUS BAR =====
+function renderPipelineBar() {
+  const bar = document.getElementById('pipelineBar');
+  const barEmpty = document.getElementById('pipelineBarEmpty');
+  const text = document.getElementById('pipelineBarText');
+  const ts = document.getElementById('pipelineBarTs');
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    if (queue.length === 0) {
+      bar.style.display = 'none';
+      barEmpty.style.display = 'flex';
+      return;
+    }
+    bar.style.display = 'flex';
+    barEmpty.style.display = 'none';
+    const lastItem = queue[queue.length - 1];
+    const sentTime = lastItem.timestamp ? new Date(lastItem.timestamp) : null;
+    const timeStr = sentTime ? sentTime.toISOString().replace('T',' ').slice(0,16) : 'unknown';
+    const severityCounts = {};
+    queue.forEach(i => { severityCounts[i.severity] = (severityCounts[i.severity] || 0) + 1; });
+    const summary = Object.entries(severityCounts).map(([s,c]) => `${c} ${s}`).join(', ');
+    text.innerHTML = `<strong>RemFlow:</strong> ${queue.length} finding${queue.length!==1?'s':''} sent${summary ? ' (' + summary + ')' : ''}`;
+    ts.textContent = timeStr;
+  } catch(e) {
+    bar.style.display = 'none';
+    barEmpty.style.display = 'flex';
+  }
+}
+
+function resendAllFindings() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    if (queue.length === 0) { showToast('Nothing to resend'); return; }
+    // Mark all as pending and update timestamp
+    queue.forEach(item => { item.status = 'pending'; item.timestamp = new Date().toISOString(); });
+    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    renderPipelineBar();
+    showToast('✓ Re-sent ' + queue.length + ' findings to RemFlow queue');
+  } catch(e) {
+    showToast('Failed to resend');
+  }
+}
+
+// ===== PIPELINE PAGE =====
+function renderPipelinePage() {
+  try {
+    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const totalSent = queue.length;
+
+    // ShieldView status — always "source" (it's the start of pipeline)
+    const svStatus = document.getElementById('pipe-sv-status');
+    const svMeta = document.getElementById('pipe-sv-meta');
+    svStatus.className = 'pipeline-step-status ' + (totalSent > 0 ? 'sent' : 'idle');
+    svStatus.textContent = totalSent > 0 ? 'data sent' : 'idle';
+    svMeta.innerHTML = '<div>Source of truth</div><div><strong>' + totalSent + '</strong> findings exported</div>';
+
+    // Arrow 1
+    const arrow1 = document.getElementById('pipe-arrow-1');
+    arrow1.className = 'pipeline-arrow' + (totalSent > 0 ? ' active' : '');
+
+    // RemFlow status
+    const rfStatus = document.getElementById('pipe-rf-status');
+    const rfMeta = document.getElementById('pipe-rf-meta');
+    const pending = queue.filter(i => i.status === 'pending').length;
+    const completed = queue.filter(i => i.status === 'completed' || i.status === 'verified').length;
+    if (totalSent === 0) {
+      rfStatus.className = 'pipeline-step-status idle';
+      rfStatus.textContent = 'idle';
+      rfMeta.innerHTML = '<div>Remediation workflow</div><div>Awaiting data</div>';
+    } else if (completed === totalSent) {
+      rfStatus.className = 'pipeline-step-status verified';
+      rfStatus.textContent = 'completed';
+      rfMeta.innerHTML = '<div>Remediation workflow</div><div><strong>' + completed + '</strong> remediations deployed</div>';
+    } else {
+      rfStatus.className = 'pipeline-step-status sent';
+      rfStatus.textContent = 'processing';
+      rfMeta.innerHTML = '<div>Remediation workflow</div><div><strong>' + pending + '</strong> pending, <strong>' + completed + '</strong> completed</div>';
+    }
+
+    // Arrow 2
+    const arrow2 = document.getElementById('pipe-arrow-2');
+    arrow2.className = 'pipeline-arrow' + (completed > 0 ? ' done' : '');
+
+    // TheValidator status
+    const tvStatus = document.getElementById('pipe-tv-status');
+    const tvMeta = document.getElementById('pipe-tv-meta');
+    if (completed === 0 && totalSent > 0) {
+      tvStatus.className = 'pipeline-step-status idle';
+      tvStatus.textContent = 'waiting';
+      tvMeta.innerHTML = '<div>Post-deployment verification</div><div>Waiting on RemFlow</div>';
+    } else if (completed > 0) {
+      const verified = queue.filter(i => i.status === 'verified').length;
+      tvStatus.className = 'pipeline-step-status ' + (verified === completed ? 'verified' : 'sent');
+      tvStatus.textContent = verified === completed ? 'verified' : 'verifying';
+      tvMeta.innerHTML = '<div>Post-deployment verification</div><div><strong>' + verified + '</strong> of <strong>' + completed + '</strong> verified</div>';
+    } else {
+      tvStatus.className = 'pipeline-step-status idle';
+      tvStatus.textContent = 'idle';
+      tvMeta.innerHTML = '<div>Post-deployment verification</div><div>Validation reporting</div>';
+    }
+
+    // Findings detail table
+    const dataCard = document.getElementById('pipeDataCard');
+    const dataCount = document.getElementById('pipeDataCount');
+    const dataBody = document.getElementById('pipeDataBody');
+    if (queue.length > 0) {
+      dataCard.style.display = '';
+      dataCount.textContent = '(' + queue.length + ' items)';
+      dataBody.innerHTML = queue.map(item => {
+        const ts = item.timestamp ? new Date(item.timestamp).toISOString().replace('T',' ').slice(0,16) : '—';
+        const sevClass = (item.severity || '').toLowerCase();
+        const sevBadge = sevClass ? '<span class="badge badge-' + sevClass + '">' + item.severity + '</span>' : '—';
+        const statusLabel = item.status === 'pending' ? '⏳ Pending' : item.status === 'completed' ? '✅ Completed' : item.status === 'verified' ? '✔ Verified' : item.status || 'pending';
+        return '<tr><td class="mono text-link">' + (item.cve || '—') + '</td><td>' + (item.title || '—') + '</td><td>' + sevBadge + '</td><td style="font-size:12px;color:var(--text-muted)">' + ts + '</td><td>' + statusLabel + '</td></tr>';
+      }).join('');
+    } else {
+      dataCard.style.display = 'none';
+    }
+  } catch(e) {
+    console.warn('renderPipelinePage error:', e);
+  }
+}
+
 // ===== CROSS-TOOL BRIDGE =====
 function sendToRemFlow(cveId, title, severity) {
   const allFindings = getActiveFindings();
@@ -4183,6 +4461,7 @@ function sendToRemFlow(cveId, title, severity) {
     }
     localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
     localStorage.setItem('security-tools:last-remediation', JSON.stringify(item));
+    renderPipelineBar();
     showToast('✓ Sent to RemFlow — open it to start remediation');
   } catch(e) {
     showToast('Failed to save to RemFlow queue');
@@ -4319,6 +4598,7 @@ renderFindingsTable();
 populateFilterDropdowns();
 updateServerRolesSection();
 updateEOLSummary();
+renderPipelineBar();
 console.log('ShieldView v4 ready — Executive page: team assignment, trend chart, risk score, exec export');
 console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user/EOL filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
