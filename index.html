@@ -1486,6 +1486,7 @@ select.input { cursor: pointer; }
           <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
             <button class="btn btn-sm btn-primary" onclick="testSnipeITConnection()">🔌 Test Connection</button>
             <button class="btn btn-sm" onclick="fetchSnipeITAssets()">📥 Fetch Assets</button>
+            <button class="btn btn-sm btn-accent" onclick="loadDemoSnipeIT()">🖥️ Load Demo Data</button>
             <button class="btn btn-sm btn-ghost" onclick="clearSnipeIT()" style="font-size:11px">🗑 Clear</button>
           </div>
           <div id="snipeitStatus" class="snipeit-status" style="margin-top:8px"></div>
@@ -2858,6 +2859,55 @@ function clearSnipeIT() {
   document.getElementById('snipeitStatus').innerHTML = '';
   document.getElementById('snipeitSummary').innerHTML = '';
   showToast('Snipe-IT data cleared');
+}
+
+function loadDemoSnipeIT() {
+  const users = ['Sarah Chen', 'Mike Rivera', 'James Okonkwo', 'Priya Patel', 'David Chiang', 'Alex Kim', 'Maria Garcia', 'Tom Baker', null];
+  const locations = ['US-East Data Center', 'US-West Office', 'EU-Central DC', 'Engineering Lab', 'Finance Dept', 'Remote'];
+  const models = [
+    { name: 'MacBook Pro 16\"', manufacturer: 'Apple Inc.', category: 'Laptop' },
+    { name: 'ProLiant DL380 G10', manufacturer: 'HPE', category: 'Server' },
+    { name: 'PowerEdge R740', manufacturer: 'Dell', category: 'Server' },
+    { name: 'ThinkPad X1 Carbon', manufacturer: 'Lenovo', category: 'Laptop' },
+    { name: 'Latitude 5540', manufacturer: 'Dell', category: 'Laptop' },
+    { name: 'ProLiant DL360 G9', manufacturer: 'HPE', category: 'Server' },
+    { name: 'MacBook Air M3', manufacturer: 'Apple Inc.', category: 'Laptop' },
+    { name: 'OptiPlex 7080', manufacturer: 'Dell', category: 'Desktop' },
+    { name: 'Catalyst 9300', manufacturer: 'Cisco', category: 'Network' },
+    { name: 'PA-3260', manufacturer: 'Palo Alto Networks', category: 'Network' },
+  ];
+  const hostnames = ['WEB-PROD-03','APP-PROD-02','APP-PROD-05','APP-PROD-07','DC-PROD-01','DC-PROD-02','DC-PROD-03','DB-PROD-01','DB-PROD-02','DB-PROD-03','EXCH-PROD-01','EXCH-PROD-02','K8S-PROD-01','K8S-PROD-02','K8S-PROD-03','SIEM-PROD-01','VCENTER-01','JENKINS-01','BKUP-SRV-01','API-GW-01','MSG-BROKER-01','PRINT-SRV-01','NPS-PROD-01','CSW-DIST-01','MAC-ENG-14','MAC-DESIGN-03','MAC-FIN-07','MAC-EXEC-01','MAC-HR-02','MAC-LEGAL-01','ADMIN-DEV-01'];
+  
+  const assets = hostnames.map((host, i) => {
+    const isServer = host.match(/^(WEB|APP|DC|DB|EXCH|K8S|SIEM|VCENTER|JENKINS|BKUP|API|MSG|PRINT|NPS)/);
+    const isNetwork = host.match(/^(CSW|FW|VPN|LB|WLC|RTR)/);
+    const isMac = host.match(/^MAC-/);
+    const modelPool = isNetwork ? models.slice(8) : isServer ? models.slice(1, 4).concat(models[5]) : isMac ? models.filter(m => m.manufacturer === 'Apple Inc.') : models.filter(m => m.category !== 'Server' && m.category !== 'Network');
+    const model = modelPool[i % modelPool.length];
+    const purchaseYear = 2019 + Math.floor(Math.random() * 7); // 2019-2025
+    const purchaseMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+    const warrantyMonths = 36;
+    const assetTag = (isServer ? 'SRV-' : isNetwork ? 'NET-' : isMac ? 'MAC-' : 'WS-') + String(10000 + i).slice(1);
+    return {
+      id: 1000 + i, asset_tag: assetTag, name: host, serial: 'SN' + Math.random().toString(36).slice(2, 10).toUpperCase(),
+      model: { name: model.name }, manufacturer: { name: model.manufacturer },
+      status_label: { name: Math.random() > 0.15 ? 'Deployed' : 'Maintenance' },
+      assigned_to: Math.random() > 0.1 ? { name: users[Math.floor(Math.random() * users.length)] || 'Unassigned' } : null,
+      location: { name: locations[Math.floor(Math.random() * locations.length)] },
+      purchase_date: `${purchaseYear}-${purchaseMonth}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
+      warranty_months: warrantyMonths
+    };
+  });
+
+  snipeitAssets = assets;
+  snipeitConfig = { url: '(demo)', mode: 'demo', lastFetch: new Date().toISOString() };
+  saveSnipeitConfig();
+  localStorage.setItem('security-tools:snipeit-assets', JSON.stringify({ rows: assets, total: assets.length }));
+  localStorage.setItem('security-tools:snipeit-assets-meta', JSON.stringify({ lastFetch: new Date().toISOString(), count: assets.length, status: 'demo' }));
+  const statusEl = document.getElementById('snipeitStatus');
+  if (statusEl) statusEl.innerHTML = '<span class="success">✅ Demo data loaded — ' + assets.length + ' assets (simulated Snipe-IT inventory)</span>';
+  document.getElementById('snipeitSummary').innerHTML = renderSnipeitSummary();
+  showToast('✅ Loaded ' + assets.length + ' demo Snipe-IT assets');
 }
 
 function getWarrantyStatus(purchaseDate, warrantyMonths) {
