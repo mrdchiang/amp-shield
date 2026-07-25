@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.cisa.gov;">
 <title>ShieldView — Vulnerability Management</title>
 <style>
 /* ===== DESIGN TOKENS — ShieldView-themed ===== */
@@ -241,6 +241,18 @@ td { font-size: 13px; }
 .badge-eol { background: var(--critical-bg); color: var(--critical); }
 .badge-approaching { background: var(--high-bg); color: var(--high); }
 .badge-supported { background: var(--low-bg); color: var(--low); }
+.badge-warranty-active { background: var(--low-bg); color: var(--low); }
+.badge-warranty-expiring { background: var(--medium-bg); color: var(--medium); }
+.badge-warranty-expired { background: var(--critical-bg); color: var(--critical); }
+.badge-warranty-unknown { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* Snipe-IT config card styles */
+.snipeit-config-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.snipeit-config-row .input { flex: 1; }
+.snipeit-status { font-size: 12px; margin-top: 4px; }
+.snipeit-status.ok { color: var(--success); }
+.snipeit-status.error { color: var(--danger); }
+.snipeit-status.loading { color: var(--info); }
 
 /* EOL summary card styles */
 .eol-summary { display: flex; gap: 16px; flex-wrap: wrap; }
@@ -915,10 +927,10 @@ select.input { cursor: pointer; }
             </div>
           </div>
 
-          <!-- KEV bar -->
+          <!-- KEV bar (dynamic) -->
           <div class="card">
-            <div class="card-title" style="margin-bottom:16px">Known Exploited Vulnerabilities (CISA KEV)</div>
-            <div style="display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:8px">
+            <div class="card-title" style="margin-bottom:16px">Known Exploited Vulnerabilities (CISA KEV) <span style="font-size:11px;color:var(--text-muted);font-weight:400" id="kevBarSource"></span></div>
+            <div id="kevBarContainer" style="display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:8px">
               <div style="flex:1;text-align:center">
                 <div style="height:120px;background:var(--critical);border-radius:var(--radius-sm) 4px 4px 0;width:40px;margin:0 auto"></div>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Critical</div>
@@ -1448,6 +1460,38 @@ select.input { cursor: pointer; }
           </div>
         </div>
 
+        <!-- KEV Feed Card -->
+        <div class="card" style="margin-top:20px" id="kevFeedCard">
+          <div class="card-header">
+            <span class="card-title">🌐 CISA KEV Catalog</span>
+            <span class="badge badge-info">Live Feed</span>
+          </div>
+          <div style="padding:20px;text-align:center;color:var(--text-muted)">
+            <p>Loading KEV catalog...</p>
+          </div>
+        </div>
+
+        <!-- Snipe-IT API Integration -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-header">
+            <span class="card-title">🏷️ Snipe-IT Asset Management API</span>
+            <span class="badge badge-info">REST API</span>
+          </div>
+          <div class="snipeit-config-row">
+            <input class="input" placeholder="Snipe-IT instance URL (e.g., https://snipeit.company.com)" id="snipeitUrl" style="flex:2">
+          </div>
+          <div class="snipeit-config-row">
+            <input class="input" type="password" placeholder="API Key" id="snipeitKey" style="flex:2">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <button class="btn btn-sm btn-primary" onclick="testSnipeITConnection()">🔌 Test Connection</button>
+            <button class="btn btn-sm" onclick="fetchSnipeITAssets()">📥 Fetch Assets</button>
+            <button class="btn btn-sm btn-ghost" onclick="clearSnipeIT()" style="font-size:11px">🗑 Clear</button>
+          </div>
+          <div id="snipeitStatus" class="snipeit-status" style="margin-top:8px"></div>
+          <div id="snipeitSummary" style="margin-top:8px"></div>
+        </div>
+
         <div class="card" style="margin-top:16px">
           <div class="card-title" style="margin-bottom:12px">Sample CSV Formats</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -1527,6 +1571,14 @@ select.input { cursor: pointer; }
         <div class="card" style="max-width:640px">
           <div class="card-title" style="margin-bottom:16px">Changelog</div>
           <div style="display:flex;flex-direction:column;gap:20px">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v6.0.0</div>
+              <div style="font-size:13px">🌐 Live CISA KEV JSON feed integration with auto-fetch, localStorage caching, cross-referencing with imported findings, KEV badge with CISA tooltip (dateAdded, dueDate, requiredAction, ransomware use), KEV feed card on Data Sources page with Refresh Now button, graceful fallback to hardcoded KEV data when offline. All KEV counts now update from live data.</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v5.0.0</div>
+              <div style="font-size:13px">🏷️ Snipe-IT REST API asset import: API config card on Data Sources page, connection test, paginated hardware fetch, asset enrichment (assigned user, purchase date, warranty status), warranty detection (Active/Expiring Soon/Expired), warranty filter on Assets page, and per-asset Snipe-IT detail card.</div>
+            </div>
             <div>
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v4.0.0</div>
               <div style="font-size:13px">Executive page rebuild: team assignment engine (Endpoint/Factory/Networking/Servers), SVG trend line chart, team breakdown cards with severity bars, Top 5 CVEs table, auto-generated risk summary, and executive report export. All vanilla JS + inline SVG.</div>
@@ -1786,6 +1838,272 @@ const CVES = {
   'CVE-2026-44004': { title:'Jamf Pro Privilege Escalation', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'An API authorization bypass in Jamf Pro 11.x allows standard users to escalate to administrator via crafted enrollment payloads.', fix:'Upgrade Jamf Pro to 11.12.1+. Rotate all Jamf Pro API credentials after upgrade.', refs:['https://learn.jamf.com/bundle/jamf-pro-release-notes/page/11_12_1.html'] },
   'CVE-2026-45005': { title:'Microsoft 365 for macOS App Sandbox Escape', severity:'High', cvss:'7.3', kev:false, ransomware:false, exploited:null, due:null, desc:'App sandbox escape in Microsoft 365 (Office) for macOS allows a malicious document to access files outside the sandbox container.', fix:'Update Microsoft 365 to version 16.88+ (Build 24061000) via Microsoft AutoUpdate.', refs:['https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft-365-apps-for-mac'] },
 };
+
+// ════ CISA KEV FALLBACK DATA ──────────────────────────────────
+// Used when live fetch fails. Matches CVEs in our demo CVES object.
+const KEV_FALLBACK = {
+  'CVE-2026-12345': { cveID:'CVE-2021-44228', vendorProject:'Apache', product:'Log4j', vulnerabilityName:'Apache Log4j2 Remote Code Execution', dateAdded:'2021-12-10', shortDescription:'Apache Log4j2 JNDI features do not protect against attacker-controlled LDAP endpoints.', requiredAction:'Apply updates per vendor instructions.', dueDate:'2021-12-24', knownRansomwareCampaignUse:'Known', notes:'https://nvd.nist.gov/vuln/detail/CVE-2021-44228' },
+  'CVE-2026-11223': { cveID:'CVE-2025-21298', vendorProject:'Microsoft', product:'Windows', vulnerabilityName:'Windows Print Spooler Elevation of Privilege Vulnerability', dateAdded:'2025-09-15', shortDescription:'Windows Print Spooler improperly performs privileged file operations.', requiredAction:'Apply KB5012345. Disable Print Spooler on DCs.', dueDate:'2025-10-06', knownRansomwareCampaignUse:'Unknown', notes:'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2025-21298' },
+  'CVE-2026-33445': { cveID:'CVE-2026-33445', vendorProject:'Microsoft', product:'Exchange Server', vulnerabilityName:'Microsoft Exchange Server Remote Code Execution', dateAdded:'2026-04-12', shortDescription:'Remote code execution in Exchange Server via improper validation of commandlet arguments.', requiredAction:'Install Exchange Server Security Update CU23 January 2026.', dueDate:'2026-05-03', knownRansomwareCampaignUse:'Known', notes:'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-33445' },
+  'CVE-2026-25501': { cveID:'CVE-2026-25501', vendorProject:'VMware', product:'vCenter Server', vulnerabilityName:'VMware vCenter Server Remote Code Execution', dateAdded:'2026-05-20', shortDescription:'Heap overflow in vCenter Server DCERPC protocol implementation allows unauthenticated RCE.', requiredAction:'Apply VMware security patch VMSA-2026-0012 immediately.', dueDate:'2026-06-10', knownRansomwareCampaignUse:'Known', notes:'https://www.vmware.com/security/advisories/VMSA-2026-0012.html' },
+  'CVE-2026-29100': { cveID:'CVE-2026-29100', vendorProject:'Cisco', product:'IOS XE', vulnerabilityName:'Cisco IOS XE Web UI Authentication Bypass', dateAdded:'2026-03-15', shortDescription:'Authentication bypass in the Cisco IOS XE web UI allows unauthenticated attackers to gain full administrative access.', requiredAction:'Upgrade to IOS XE 17.9.5+ or disable HTTP server.', dueDate:'2026-04-05', knownRansomwareCampaignUse:'Unknown', notes:'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-iosxe-webui' },
+  'CVE-2026-42002': { cveID:'CVE-2026-42002', vendorProject:'Apple', product:'Safari', vulnerabilityName:'Safari WebKit Remote Code Execution', dateAdded:'2026-06-01', shortDescription:'A use-after-free in Safari WebKit allows remote attackers to execute arbitrary code via a crafted web page.', requiredAction:'Upgrade Safari to version 18.4+ bundled with macOS 15.4.', dueDate:'2026-06-22', knownRansomwareCampaignUse:'Known', notes:'https://support.apple.com/en-us/HT214001' },
+};
+
+// ════ LIVE KEV CACHE ──────────────────────────────────────────
+let kevCatalog = null;        // Parsed CISA KEV entries, keyed by CVE ID (or null if not loaded)
+let kevLastFetched = null;    // ISO timestamp of last successful fetch
+let kevFetchInProgress = false;
+
+function loadKEVFromStorage() {
+  try {
+    const raw = localStorage.getItem('security-tools:kev-catalog');
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && data.catalog && data.timestamp) {
+        kevCatalog = data.catalog;
+        kevLastFetched = data.timestamp;
+        console.log('Loaded KEV catalog from localStorage: ' + Object.keys(kevCatalog).length + ' entries, fetched ' + kevLastFetched);
+        return true;
+      }
+    }
+  } catch(e) { console.warn('Failed to load KEV from localStorage:', e); }
+  return false;
+}
+
+function saveKEVToStorage(catalog) {
+  try {
+    const data = { catalog, timestamp: new Date().toISOString() };
+    localStorage.setItem('security-tools:kev-catalog', JSON.stringify(data));
+    kevCatalog = catalog;
+    kevLastFetched = data.timestamp;
+  } catch(e) { console.warn('Failed to save KEV to localStorage:', e); }
+}
+
+function getKEVEntry(cveId) {
+  if (kevCatalog && kevCatalog[cveId]) return kevCatalog[cveId];
+  // Fallback to hardcoded data
+  if (KEV_FALLBACK[cveId]) return KEV_FALLBACK[cveId];
+  return null;
+}
+
+function isKEVExploited(cveId) {
+  return !!(getKEVEntry(cveId));
+}
+
+async function fetchKEVData(force) {
+  if (kevFetchInProgress) return;
+  kevFetchInProgress = true;
+
+  // If we have fresh data (< 24h) and not forced, skip
+  if (!force && kevLastFetched) {
+    const age = Date.now() - new Date(kevLastFetched).getTime();
+    if (age < 24 * 60 * 60 * 1000) {
+      console.log('KEV data is fresh (' + Math.round(age/3600000) + 'h old), skipping fetch');
+      kevFetchInProgress = false;
+      return;
+    }
+  }
+
+  const url = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+  try {
+    console.log('Fetching live CISA KEV catalog...');
+    const resp = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!data.vulnerabilities || !Array.isArray(data.vulnerabilities)) {
+      throw new Error('Unexpected JSON structure');
+    }
+
+    // Build catalog keyed by CVE ID
+    const catalog = {};
+    let matchCount = 0;
+    const allFindings = getActiveFindings();
+    const findingCVEs = new Set(allFindings.map(f => f.cve));
+
+    data.vulnerabilities.forEach(entry => {
+      const cve = entry.cveID;
+      if (!cve) return;
+      catalog[cve] = {
+        cveID: cve,
+        vendorProject: entry.vendorProject || '',
+        product: entry.product || '',
+        vulnerabilityName: entry.vulnerabilityName || '',
+        dateAdded: entry.dateAdded || '',
+        shortDescription: entry.shortDescription || '',
+        requiredAction: entry.requiredAction || '',
+        dueDate: entry.dueDate || '',
+        knownRansomwareCampaignUse: entry.knownRansomwareCampaignUse || '',
+        notes: entry.notes || '',
+      };
+      if (findingCVEs.has(cve)) matchCount++;
+    });
+
+    saveKEVToStorage(catalog);
+    console.log('KEV catalog loaded: ' + Object.keys(catalog).length + ' entries, ' + matchCount + ' match imported findings');
+
+    // Update all KEV flags on findings
+    updateFindingKEVFlags();
+    // Refresh UI
+    refreshKEVUI();
+
+  } catch(e) {
+    console.warn('Failed to fetch live KEV data:', e.message);
+    // Use fallback if no stored data
+    if (!kevCatalog) {
+      console.log('Using KEV fallback data (' + Object.keys(KEV_FALLBACK).length + ' entries)');
+      kevCatalog = KEV_FALLBACK;
+      kevLastFetched = new Date().toISOString();
+      updateFindingKEVFlags();
+    }
+  } finally {
+    kevFetchInProgress = false;
+  }
+}
+
+function updateFindingKEVFlags() {
+  const allFindings = getActiveFindings();
+  allFindings.forEach(f => {
+    f.kev = isKEVExploited(f.cve);
+  });
+  // Also update imported findings if present
+  if (importedFindings) {
+    importedFindings.forEach(f => {
+      f.kev = isKEVExploited(f.cve);
+    });
+  }
+}
+
+function refreshKEVUI() {
+  updateDashboardStats();
+  renderFindingsTable(dashFilters.search || '', dashFilters);
+  renderKEVBar();
+  renderKEVFeedCard();
+  updateEOLSummary();
+}
+
+function getKEVStats() {
+  const catalog = kevCatalog || KEV_FALLBACK;
+  const catalogCount = Object.keys(catalog).length;
+  const allFindings = getActiveFindings();
+  const findingCVEs = new Set(allFindings.map(f => f.cve));
+  let matchCount = 0;
+  for (const cve of findingCVEs) {
+    if (catalog[cve]) matchCount++;
+  }
+  return { catalogCount, matchCount, lastFetched: kevLastFetched };
+}
+
+function renderKEVBar() {
+  const el = document.getElementById('kevBarContainer');
+  if (!el) return;
+  const allFindings = getActiveFindings();
+  const active = allFindings.filter(f => f.state === 'Active' && f.kev);
+  const crit = active.filter(f => f.severity === 'Critical').length;
+  const high = active.filter(f => f.severity === 'High').length;
+  const med = active.filter(f => f.severity === 'Medium').length;
+  const maxVal = Math.max(crit, high, med, 1);
+  const barHeight = (v) => Math.max(4, Math.round((v / maxVal) * 120));
+
+  // Update source label
+  const srcEl = document.getElementById('kevBarSource');
+  if (srcEl) {
+    const src = kevLastFetched ? ' (live CISA feed)' : ' (fallback data)';
+    srcEl.textContent = src;
+  }
+
+  el.innerHTML = `
+    <div style="flex:1;text-align:center">
+      <div style="height:${barHeight(crit)}px;background:var(--critical);border-radius:var(--radius-sm) 4px 4px 0;width:40px;margin:0 auto;transition:height 0.4s"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Critical</div>
+      <div style="font-weight:700;font-size:14px;color:var(--critical)">${crit}</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="height:${barHeight(high)}px;background:var(--high);border-radius:4px 4px 0 0;width:40px;margin:0 auto;transition:height 0.4s"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">High</div>
+      <div style="font-weight:700;font-size:14px;color:var(--high)">${high}</div>
+    </div>
+    <div style="flex:1;text-align:center">
+      <div style="height:${barHeight(med)}px;background:var(--medium);border-radius:4px 4px 0 0;width:40px;margin:0 auto;transition:height 0.4s"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Medium</div>
+      <div style="font-weight:700;font-size:14px;color:var(--medium)">${med}</div>
+    </div>`;
+}
+
+function getKEVTooltip(cveId) {
+  const entry = getKEVEntry(cveId);
+  if (!entry) return '';
+  const parts = [];
+  if (entry.dateAdded) parts.push('CISA Added: ' + entry.dateAdded);
+  if (entry.dueDate) parts.push('Due Date: ' + entry.dueDate);
+  if (entry.requiredAction) parts.push('Action: ' + entry.requiredAction.replace(/"/g,'&quot;'));
+  if (entry.knownRansomwareCampaignUse) parts.push('Ransomware: ' + entry.knownRansomwareCampaignUse);
+  return parts.join('\n');
+}
+
+function renderKEVDetailBadge(cveId) {
+  const entry = getKEVEntry(cveId);
+  if (!entry) return '';
+  let html = '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">';
+  if (entry.dateAdded) html += `<span class="badge badge-high" title="Date added to CISA KEV catalog">📅 Added: ${entry.dateAdded}</span>`;
+  if (entry.dueDate) html += `<span class="badge badge-high" title="Federal due date for remediation">⏰ Due: ${entry.dueDate}</span>`;
+  if (entry.knownRansomwareCampaignUse && entry.knownRansomwareCampaignUse !== 'Unknown') html += `<span style="font-size:12px;color:var(--danger);font-weight:600">⚠ Ransomware: ${entry.knownRansomwareCampaignUse}</span>`;
+  if (entry.vendorProject) html += `<span style="font-size:12px;color:var(--text-secondary)">Vendor: ${entry.vendorProject} / ${entry.product || ''}</span>`;
+  html += '</div>';
+  if (entry.requiredAction) {
+    html += `<div style="margin-bottom:12px;padding:10px 12px;background:var(--critical-bg);border-radius:var(--radius-sm);border-left:3px solid var(--critical)">
+      <strong style="font-size:12px;color:var(--critical)">🛡️ CISA Required Action:</strong>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:4px">${entry.requiredAction}</p>
+    </div>`;
+  }
+  return html;
+}
+
+function renderKEVFeedCard() {
+  const el = document.getElementById('kevFeedCard');
+  if (!el) return;
+  const stats = getKEVStats();
+  const timeStr = stats.lastFetched
+    ? new Date(stats.lastFetched).toLocaleString()
+    : 'Never';
+  const ageStr = stats.lastFetched
+    ? Math.round((Date.now() - new Date(stats.lastFetched).getTime()) / 3600000) + 'h ago'
+    : '—';
+
+  el.innerHTML = `
+    <div class="card-header">
+      <span class="card-title">🌐 CISA KEV Catalog</span>
+      <span class="badge badge-info">Live Feed</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+      <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--accent)">${stats.catalogCount.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--text-secondary)">Total KEV Entries</div>
+      </div>
+      <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:${stats.matchCount > 0 ? 'var(--danger)' : 'var(--success)'}">${stats.matchCount}</div>
+        <div style="font-size:11px;color:var(--text-secondary)">Matching Findings</div>
+      </div>
+      <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:12px;text-align:center">
+        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${timeStr}</div>
+        <div style="font-size:11px;color:var(--text-muted)">Last Fetched (${ageStr})</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-sm btn-primary" onclick="refreshKEVNow()" id="kevRefreshBtn">🔄 Refresh Now</button>
+      <span style="font-size:11px;color:var(--text-muted)">Auto-refreshes every 24 hours</span>
+      <span style="font-size:11px;color:var(--text-muted);margin-left:auto" id="kevSourceNote">Source: cisa.gov/known-exploited-vulnerabilities-catalog</span>
+    </div>`;
+}
+
+async function refreshKEVNow() {
+  const btn = document.getElementById('kevRefreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching...'; }
+  await fetchKEVData(true);
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Now'; }
+  renderKEVFeedCard();
+  showToast('✓ KEV catalog refreshed');
+}
 
 const FINDINGS = [
   {cve:'CVE-2026-12345', check:'Apache Log4j Remote Code Execution', asset:'WEB-PROD-03', port:'443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-14'},
@@ -2393,12 +2711,193 @@ function loadImportedData() {
     importedFindings = null;
     importedAssets = null;
   }
+  // Load Snipe-IT data
+  loadSnipeITData();
   // Enrich if both exist
   if (importedFindings && importedAssets) {
     enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
   } else {
     enrichedFindings = null;
   }
+}
+
+// ════ SNIPE-IT ASSET MANAGEMENT API ════════════════════════════
+let snipeitAssets = null;
+let snipeitConfig = null;
+
+function loadSnipeITConfig() {
+  try {
+    const c = localStorage.getItem('security-tools:snipeit-config');
+    if (c) snipeitConfig = JSON.parse(c);
+  } catch(e) { snipeitConfig = null; }
+}
+
+function saveSnipeITConfig() {
+  const url = (document.getElementById('snipeitUrl')?.value || '').replace(/\/+$/, '');
+  const key = document.getElementById('snipeitKey')?.value || '';
+  snipeitConfig = { url, key };
+  try { localStorage.setItem('security-tools:snipeit-config', JSON.stringify(snipeitConfig)); } catch(e) {}
+}
+
+function loadSnipeITData() {
+  loadSnipeITConfig();
+  try {
+    const a = localStorage.getItem('security-tools:snipeit-assets');
+    if (a) snipeitAssets = JSON.parse(a);
+  } catch(e) { snipeitAssets = null; }
+}
+
+async function testSnipeITConnection() {
+  saveSnipeITConfig();
+  const statusEl = document.getElementById('snipeitStatus');
+  if (!snipeitConfig || !snipeitConfig.url || !snipeitConfig.key) {
+    statusEl.innerHTML = '<span class="error">⚠ Please enter both URL and API Key</span>';
+    return;
+  }
+  statusEl.innerHTML = '<span class="loading">⏳ Testing connection...</span>';
+  try {
+    const res = await fetch(snipeitConfig.url + '/api/v1/hardware?limit=1', {
+      headers: { 'Authorization': 'Bearer ' + snipeitConfig.key, 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const total = data.total || 0;
+    statusEl.innerHTML = '<span class="ok">✅ Connected successfully — ' + total.toLocaleString() + ' assets available</span>';
+    showToast('✅ Snipe-IT connection successful — ' + total.toLocaleString() + ' assets');
+  } catch(e) {
+    statusEl.innerHTML = '<span class="error">❌ Connection failed: ' + e.message + '</span>';
+    showToast('❌ Snipe-IT connection failed: ' + e.message);
+  }
+}
+
+async function fetchSnipeITAssets() {
+  saveSnipeITConfig();
+  const statusEl = document.getElementById('snipeitStatus');
+  const summaryEl = document.getElementById('snipeitSummary');
+  if (!snipeitConfig || !snipeitConfig.url || !snipeitConfig.key) {
+    statusEl.innerHTML = '<span class="error">⚠ Please enter both URL and API Key. Test connection first.</span>';
+    return;
+  }
+  statusEl.innerHTML = '<span class="loading">⏳ Fetching assets from Snipe-IT...</span>';
+  try {
+    const allAssets = [];
+    let offset = 0;
+    const limit = 500;
+    let hasMore = true;
+    while (hasMore) {
+      const res = await fetch(snipeitConfig.url + '/api/v1/hardware?limit=' + limit + '&offset=' + offset, {
+        headers: { 'Authorization': 'Bearer ' + snipeitConfig.key, 'Accept': 'application/json' }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const rows = data.rows || [];
+      rows.forEach(item => {
+        const asset = {
+          id: item.id,
+          asset_tag: item.asset_tag || '',
+          name: item.name || '',
+          serial: item.serial || '',
+          model: item.model ? item.model.name : '',
+          manufacturer: item.manufacturer ? item.manufacturer.name : '',
+          status_label: item.status_label ? item.status_label.name : '',
+          assigned_to: item.assigned_to ? item.assigned_to.name : '',
+          location: item.location ? item.location.name : '',
+          purchase_date: item.purchase_date ? item.purchase_date.date || item.purchase_date : '',
+          warranty_months: item.warranty_months || 0,
+          custom_fields: item.custom_fields || {},
+          hostname: (item.name || '').toLowerCase()
+        };
+        allAssets.push(asset);
+      });
+      offset += limit;
+      hasMore = rows.length === limit;
+    }
+    snipeitAssets = allAssets;
+    try { localStorage.setItem('security-tools:snipeit-assets', JSON.stringify(snipeitAssets)); } catch(e) {}
+    try { localStorage.setItem('security-tools:snipeit-assets-meta', JSON.stringify({count: snipeitAssets.length, timestamp: new Date().toISOString()})); } catch(e) {}
+
+    // Build summary
+    const statusBreakdown = {};
+    const dates = [];
+    snipeitAssets.forEach(a => {
+      const s = a.status_label || 'Unknown';
+      statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
+      if (a.purchase_date) dates.push(a.purchase_date);
+    });
+    dates.sort();
+    const dateRange = dates.length > 0
+      ? dates[0].slice(0,10) + ' → ' + dates[dates.length-1].slice(0,10)
+      : 'N/A';
+
+    statusEl.innerHTML = '<span class="ok">✅ Imported ' + snipeitAssets.length.toLocaleString() + ' assets from Snipe-IT</span>';
+    let summaryHTML = '<div style="font-size:12px;color:var(--text-secondary);line-height:1.8">' +
+      '<div><strong>Status breakdown:</strong> ' + Object.entries(statusBreakdown).map(([s,c]) => s + ': ' + c).join(', ') + '</div>' +
+      '<div><strong>Purchase date range:</strong> ' + dateRange + '</div>' +
+      '</div>';
+    summaryEl.innerHTML = summaryHTML;
+
+    // Re-enrich findings with Snipe-IT data
+    if (importedFindings && importedAssets) {
+      enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
+    }
+    showToast('✓ Imported ' + snipeitAssets.length.toLocaleString() + ' Snipe-IT assets');
+  } catch(e) {
+    statusEl.innerHTML = '<span class="error">❌ Fetch failed: ' + e.message + '</span>';
+    showToast('❌ Snipe-IT fetch failed: ' + e.message);
+  }
+}
+
+function clearSnipeIT() {
+  snipeitAssets = null;
+  snipeitConfig = null;
+  localStorage.removeItem('security-tools:snipeit-assets');
+  localStorage.removeItem('security-tools:snipeit-assets-meta');
+  localStorage.removeItem('security-tools:snipeit-config');
+  document.getElementById('snipeitUrl').value = '';
+  document.getElementById('snipeitKey').value = '';
+  document.getElementById('snipeitStatus').innerHTML = '';
+  document.getElementById('snipeitSummary').innerHTML = '';
+  showToast('Snipe-IT data cleared');
+}
+
+function getWarrantyStatus(purchaseDate, warrantyMonths) {
+  if (!purchaseDate || !warrantyMonths || warrantyMonths <= 0) return { status: 'Unknown', label: '❓ Unknown', cssClass: 'badge-warranty-unknown', daysLeft: null };
+  try {
+    const purchase = new Date(purchaseDate + 'T00:00:00Z');
+    const expiry = new Date(purchase);
+    expiry.setMonth(expiry.getMonth() + warrantyMonths);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = expiry.getTime() - today.getTime();
+    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 0) return { status: 'Expired', label: '⚠ Expired', cssClass: 'badge-warranty-expired', daysLeft };
+    if (daysLeft <= 90) return { status: 'Expiring Soon', label: '⏳ Expiring Soon', cssClass: 'badge-warranty-expiring', daysLeft };
+    return { status: 'Active', label: '✅ Active', cssClass: 'badge-warranty-active', daysLeft };
+  } catch(e) {
+    return { status: 'Unknown', label: '❓ Unknown', cssClass: 'badge-warranty-unknown', daysLeft: null };
+  }
+}
+
+function findSnipeITAsset(hostname) {
+  if (!snipeitAssets || !hostname) return null;
+  const hn = hostname.toLowerCase();
+  // Try exact match first
+  let match = snipeitAssets.find(a => a.hostname === hn);
+  if (match) return match;
+  // Try short name match
+  const short = hn.split('.')[0];
+  match = snipeitAssets.find(a => a.hostname === short || a.hostname.startsWith(short + '.'));
+  if (match) return match;
+  // Try contains
+  match = snipeitAssets.find(a => a.hostname.includes(short) || short.includes(a.hostname));
+  return match || null;
+}
+
+function getWarrantyBadge(hostname) {
+  const snipeAsset = findSnipeITAsset(hostname);
+  if (!snipeAsset) return '<span class="badge badge-warranty-unknown">❓ Unknown</span>';
+  const ws = getWarrantyStatus(snipeAsset.purchase_date, snipeAsset.warranty_months);
+  return '<span class="badge ' + ws.cssClass + '">' + ws.label + '</span>';
 }
 
 function joinFindingsWithAssets(findings, assets) {
@@ -2413,6 +2912,23 @@ function joinFindingsWithAssets(findings, assets) {
   return findings.map(f => {
     const key = f.asset.toUpperCase();
     const match = assetMap[key];
+    // Snipe-IT enrichment
+    let warrantyStatus = 'Unknown';
+    let snipeAssignedUser = '';
+    let snipePurchaseDate = '';
+    let snipeDepartment = '';
+    if (snipeitAssets) {
+      const snipeMatch = findSnipeITAsset(f.asset);
+      if (snipeMatch) {
+        const ws = getWarrantyStatus(snipeMatch.purchase_date, snipeMatch.warranty_months);
+        warrantyStatus = ws.status;
+        snipeAssignedUser = snipeMatch.assigned_to || '';
+        snipePurchaseDate = snipeMatch.purchase_date ? snipeMatch.purchase_date.slice(0,10) : '';
+        snipeDepartment = snipeMatch.custom_fields && snipeMatch.custom_fields.Department
+          ? (snipeMatch.custom_fields.Department.value || snipeMatch.custom_fields.Department || '')
+          : '';
+      }
+    }
     if (match) {
       return {
         ...f,
@@ -2421,6 +2937,10 @@ function joinFindingsWithAssets(findings, assets) {
         serverRoles: match.serverRoles || ['Unknown'],
         assetOS: match.os || '',
         team: match.team || assignTeam(f.asset, match.os, match.ou, match.serverRoles),
+        warrantyStatus,
+        snipeAssignedUser,
+        snipePurchaseDate,
+        snipeDepartment,
       };
     }
     return {
@@ -2430,6 +2950,10 @@ function joinFindingsWithAssets(findings, assets) {
       serverRoles: ['Unknown'],
       assetOS: '',
       team: assignTeam(f.asset, '', '', []),
+      warrantyStatus,
+      snipeAssignedUser,
+      snipePurchaseDate,
+      snipeDepartment,
     };
   });
 }
@@ -2502,11 +3026,13 @@ function handleFileSelect(event, type) {
       showToast(`✓ Imported ${assets.length} assets from ${file.name}`);
     }
     updateImportSummary();
+    updateFindingKEVFlags();
     buildEOLCache();
     updateDashboardStats();
     renderFindingsTable(dashFilters.search || '', dashFilters);
     updateServerRolesSection();
     updateEOLSummary();
+    renderKEVBar();
   };
   reader.readAsText(file);
 }
@@ -2541,11 +3067,13 @@ function clearImport(type) {
     document.getElementById('statusSCCM').innerHTML = '';
   }
   updateImportSummary();
+  updateFindingKEVFlags();
   buildEOLCache();
   updateDashboardStats();
   renderFindingsTable(dashFilters.search || '', dashFilters);
   updateServerRolesSection();
   updateEOLSummary();
+  renderKEVBar();
   showToast('Import cleared — using demo data');
 }
 
@@ -2630,6 +3158,29 @@ function renderSetupPage() {
   if (importedAssets) {
     const metaA = JSON.parse(localStorage.getItem('security-tools:imported-assets-meta') || '{}');
     updateImportStatus('sccm', metaA.fileName || 'devices.csv', importedAssets.length, 'ok');
+  }
+  // Restore Snipe-IT config
+  loadSnipeITConfig();
+  if (snipeitConfig) {
+    const urlEl = document.getElementById('snipeitUrl');
+    const keyEl = document.getElementById('snipeitKey');
+    if (urlEl) urlEl.value = snipeitConfig.url || '';
+    if (keyEl) keyEl.value = snipeitConfig.key || '';
+  }
+  if (snipeitAssets && snipeitAssets.length > 0) {
+    const statusEl = document.getElementById('snipeitStatus');
+    const summaryEl = document.getElementById('snipeitSummary');
+    if (statusEl) statusEl.innerHTML = '<span class="ok">✅ ' + snipeitAssets.length.toLocaleString() + ' Snipe-IT assets loaded</span>';
+    if (summaryEl) {
+      const statusBreakdown = {};
+      snipeitAssets.forEach(a => {
+        const s = a.status_label || 'Unknown';
+        statusBreakdown[s] = (statusBreakdown[s] || 0) + 1;
+      });
+      summaryEl.innerHTML = '<div style="font-size:12px;color:var(--text-secondary);line-height:1.8">' +
+        '<div><strong>Status breakdown:</strong> ' + Object.entries(statusBreakdown).map(([s,c]) => s + ': ' + c).join(', ') + '</div>' +
+        '</div>';
+    }
   }
 }
 
@@ -2736,12 +3287,13 @@ function navigateTo(page) {
   if (page === 'assets') renderAssetsPage();
   if (page === 'vendor') renderVendorPage();
   if (page === 'recently-fixed') renderRecentlyFixed();
-  if (page === 'setup') renderSetupPage();
+  if (page === 'setup') { renderSetupPage(); renderKEVFeedCard(); }
   if (page === 'pipeline') renderPipelinePage();
   if (page === 'dashboard') {
     renderFindingsTable();
     updateDashboardStats();
     updateEOLSummary();
+    renderKEVBar();
   }
 }
 
@@ -3526,11 +4078,11 @@ function renderCVEDetail(cveId) {
             <span class="mono" style="font-size:20px;font-weight:700">${cveId || 'CVE-2026-12345'}</span>
             <span class="badge badge-${c.severity.toLowerCase()}">${c.severity}</span>
             <span class="badge badge-high">CVSS ${c.cvss}</span>
-            ${c.kev ? '<span style="color:var(--danger);font-size:14px">⚠ KEV</span>' : ''}
+            ${isKEVExploited(cveId) ? '<span style="color:var(--danger);font-size:14px">🛡️ KEV</span>' : (c.kev ? '<span style="color:var(--danger);font-size:14px">⚠ KEV</span>' : '')}
           </div>
           <h3 style="margin-bottom:8px">${c.title}</h3>
           <p style="color:var(--text-secondary);margin-bottom:12px;max-width:700px">${c.desc}</p>
-          ${c.kev ? `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="badge badge-high">Exploited: ${c.exploited}</span><span class="badge badge-high">Due: ${c.due}</span>${c.ransomware ? '<span style="font-size:12px;color:var(--danger)">Ransomware: Yes</span>' : ''}</div>` : ''}
+          ${isKEVExploited(cveId) ? renderKEVDetailBadge(cveId) : (c.kev ? `<div style="display:flex;gap:12px;margin-bottom:12px"><span class="badge badge-high">Exploited: ${c.exploited}</span><span class="badge badge-high">Due: ${c.due}</span>${c.ransomware ? '<span style="font-size:12px;color:var(--danger)">Ransomware: Yes</span>' : ''}</div>` : '')}
           <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--accent)">
             <strong style="font-size:13px">Remediation:</strong>
             <p style="font-size:13px;color:var(--text-secondary);margin-top:4px">${c.fix}</p>
@@ -3819,7 +4371,7 @@ function renderFindingsTable(filter, opts) {
         <td></td>
         <td><span class="badge badge-${g.severity.toLowerCase()}">${g.severity}</span></td>
         <td><span class="badge badge-neutral">${g.count} findings</span></td>
-        <td>${g.kev?'<span style="color:var(--danger)">⚠</span>':''}</td>
+        <td>${g.kev ? `<span style="color:var(--danger);cursor:help" title="${getKEVTooltip(g.cve)}">🛡️ KEV</span>` : ''}</td>
         <td style="font-size:12px;color:var(--text-muted)">${g.firstSeen}</td>
         <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[g.cve]?'★':'☆'}</td>
       </tr>`).join('');
@@ -3845,7 +4397,7 @@ function renderFindingsTable(filter, opts) {
         <td></td>
         <td><span class="badge badge-${g.severity.toLowerCase()}">${g.severity}</span></td>
         <td><span class="badge badge-neutral">${g.count} findings</span></td>
-        <td>${g.kev?'<span style="color:var(--danger)">⚠</span>':''}</td>
+        <td>${g.kev ? `<span style="color:var(--danger);cursor:help" title="${getKEVTooltip(g.cve)}">🛡️ KEV</span>` : ''}</td>
         <td style="font-size:12px;color:var(--text-muted)">${g.firstSeen}</td>
         <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[g.cve]?'★':'☆'}</td>
       </tr>`).join('');
@@ -4034,6 +4586,33 @@ function renderAssetDetail() {
         </div>
       </div>`;
     })()}
+    <!-- Snipe-IT Asset Details -->
+    ${(() => {
+      if (!snipeitAssets) return '';
+      const snipeMatch = findSnipeITAsset(selectedAsset);
+      if (!snipeMatch) return '';
+      const ws = getWarrantyStatus(snipeMatch.purchase_date, snipeMatch.warranty_months);
+      const borderColor = ws.status === 'Expired' ? 'var(--critical)' : ws.status === 'Expiring Soon' ? 'var(--high)' : 'var(--low)';
+      return `<div class="card" style="margin-bottom:16px;border-left:3px solid ${borderColor}">
+        <div class="card-title" style="margin-bottom:12px">🏷️ Snipe-IT Asset Record</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div><span style="color:var(--text-muted)">Asset Tag:</span> <strong>${snipeMatch.asset_tag || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Serial:</span> <strong>${snipeMatch.serial || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Manufacturer:</span> <strong>${snipeMatch.manufacturer || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Model:</span> <strong>${snipeMatch.model || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Assigned To:</span> <strong>${snipeMatch.assigned_to || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Location:</span> <strong>${snipeMatch.location || '—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Status:</span> <span class="badge badge-neutral">${snipeMatch.status_label || '—'}</span></div>
+          <div><span style="color:var(--text-muted)">Purchase Date:</span> <strong>${snipeMatch.purchase_date ? snipeMatch.purchase_date.slice(0,10) : '—'}</strong></div>
+          <div style="grid-column:1/-1">
+            <span style="color:var(--text-muted)">Warranty:</span>
+            <span class="badge ${ws.cssClass}">${ws.label}</span>
+            ${ws.daysLeft !== null ? (ws.status === 'Expired' ? ` <span style="font-size:11px;color:var(--critical)">(${Math.abs(ws.daysLeft)} days past expiry)</span>` : ` <span style="font-size:11px;color:var(--text-muted)">(${ws.daysLeft} days remaining)</span>`) : ''}
+            ${snipeMatch.warranty_months ? ` <span style="font-size:11px;color:var(--text-muted)">— ${snipeMatch.warranty_months} month warranty</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    })()}
     <div class="card">
       <div class="card-header"><span class="card-title">Findings on ${assetData.name}</span></div>
       <table><thead><tr><th>CVE</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>State</th><th>Disposition</th><th>KEV</th><th>First Seen</th><th>★</th></tr></thead>
@@ -4076,14 +4655,18 @@ function renderAssetsPage() {
       <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option>All OS</option><option>Windows Server 2022</option><option>Ubuntu 22.04 LTS</option><option>RHEL 9.3</option><option>PAN-OS</option><option>Dell EMC</option><option>macOS</option></select>
       <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')" id="assetDispFilter"><option>All Dispositions</option>${[...new Set(allAssets.flatMap(a=>FINDINGS.filter(f=>f.asset===a.name&&f.state==='Active').map(f=>f.disposition)))].map(d=>`<option>${d}</option>`).join('')}</select>
       <select class="input" id="eolFilterAssets2" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option value="All">All EOL Status</option><option value="eol">🪦 EOL</option><option value="approaching">⏳ Approaching</option><option value="supported">✅ Supported</option><option value="unknown">❓ Unknown</option></select>
+      ${snipeitAssets && snipeitAssets.length > 0 ? `<select class="input" id="warrantyFilterAssets" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option value="All">All Warranty</option><option value="Active">✅ Active</option><option value="Expiring Soon">⏳ Expiring Soon</option><option value="Expired">⚠ Expired</option><option value="Unknown">❓ Unknown</option></select>` : ''}
       <span style="font-size:13px;color:var(--text-secondary);margin-left:auto">${allAssets.length} assets across ${Object.keys(TEAMS).length} teams</span>
     </div>
     <div class="card">
-      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>EOL Status</th><th>Site</th><th>Team</th><th>CVEs</th><th>Critical</th><th>High</th><th>KEV</th><th>Last Seen</th></tr></thead>
+      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>EOL Status</th>${snipeitAssets && snipeitAssets.length > 0 ? '<th>Warranty</th>' : ''}<th>Site</th><th>Team</th><th>CVEs</th><th>Critical</th><th>High</th><th>KEV</th><th>Last Seen</th></tr></thead>
       <tbody id="globalAssetsBody">
         ${allAssets.map(a => {
           const eolBadge = getEOLBadge(a.eolStatus);
-          return `<tr class="clickable" onclick="viewAsset('${a.name}')" data-site="${a.site}" data-os="${a.os}" data-eol="${a.eolStatus}"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${eolBadge}</td><td>${a.site}</td><td>${a.team}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="color:var(--danger)">${a.kev > 0 ? '⚠ ' + a.kev : '—'}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`;
+          const warrantyBadge = getWarrantyBadge(a.name);
+          const warrantyData = snipeitAssets ? findSnipeITAsset(a.name) : null;
+          const warrantyStatus = warrantyData ? getWarrantyStatus(warrantyData.purchase_date, warrantyData.warranty_months).status : 'Unknown';
+          return `<tr class="clickable" onclick="viewAsset('${a.name}')" data-site="${a.site}" data-os="${a.os}" data-eol="${a.eolStatus}" data-warranty="${warrantyStatus}"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${eolBadge}</td>${snipeitAssets && snipeitAssets.length > 0 ? '<td>' + warrantyBadge + '</td>' : ''}<td>${a.site}</td><td>${a.team}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="color:var(--danger)">${a.kev > 0 ? '⚠ ' + a.kev : '—'}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`;
         }).join('')}
       </tbody></table>
     </div>`;
@@ -4095,18 +4678,21 @@ function filterGlobalAssets(query) {
   const osFilter = document.querySelector('#page-assets select:nth-of-type(2)')?.value || 'All OS';
   const dispFilter = document.getElementById('assetDispFilter')?.value || 'All Dispositions';
   const eolFilter = (document.getElementById('eolFilterAssets')?.value || document.getElementById('eolFilterAssets2')?.value || 'All');
+  const warrantyFilter = (document.getElementById('warrantyFilterAssets')?.value || 'All');
   document.querySelectorAll('#globalAssetsBody tr').forEach(row => {
     const text = row.textContent.toLowerCase();
     const site = row.dataset.site || '';
     const os = row.dataset.os || '';
     const eol = row.dataset.eol || 'unknown';
+    const warranty = row.dataset.warranty || 'Unknown';
     const name = row.querySelector('td')?.textContent?.trim() || '';
     const matchSearch = !q || text.includes(q);
     const matchSite = siteFilter === 'All Sites' || site.includes(siteFilter);
     const matchOS = osFilter === 'All OS' || os.includes(osFilter);
     const matchDisp = dispFilter === 'All Dispositions' || getActiveFindings().some(f => f.asset === name && f.state === 'Active' && f.disposition === dispFilter);
     const matchEOL = eolFilter === 'All' || eol === eolFilter;
-    row.style.display = matchSearch && matchSite && matchOS && matchDisp && matchEOL ? '' : 'none';
+    const matchWarranty = warrantyFilter === 'All' || warranty === warrantyFilter;
+    row.style.display = matchSearch && matchSite && matchOS && matchDisp && matchEOL && matchWarranty ? '' : 'none';
   });
 }
 // ===== RENDER VENDOR PAGE — Drill-down donut =====
@@ -4593,14 +5179,25 @@ setTimeout(hookExportButtons, 1500);
 // ===== INIT =====
 loadImportedData();
 buildEOLCache();
+// Load KEV from storage (synchronous), then fetch live data (async)
+loadKEVFromStorage();
+if (!kevCatalog) {
+  // No stored data — use fallback immediately
+  kevCatalog = KEV_FALLBACK;
+  kevLastFetched = new Date().toISOString();
+}
+updateFindingKEVFlags();
 updateDashboardStats();
 renderFindingsTable();
+renderKEVBar();
 populateFilterDropdowns();
 updateServerRolesSection();
 updateEOLSummary();
 renderPipelineBar();
-console.log('ShieldView v4 ready — Executive page: team assignment, trend chart, risk score, exec export');
-console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user/EOL filters, EOL tracking');
+// Kick off async KEV fetch (won't block UI)
+fetchKEVData(false);
+console.log('ShieldView v7 ready — Snipe-IT API asset import, Live CISA KEV feed, executive page: team assignment, trend chart, risk score, exec export');
+console.log('Features: Tenable CSV, SCCM/PDQ CSV, Snipe-IT REST API, Live CISA KEV JSON, view toggle, role/OU/user/EOL/warranty filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 
 // Cross-tool bridge — show pending count in sidebar
