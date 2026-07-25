@@ -6324,6 +6324,26 @@ console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
     }
   } catch(e) {}
 })();
+// ════ URL PARAM FILTER SUPPORT ════
+(function applyURLParams() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const filter = params.get('filter');
+    if (filter) {
+      // Navigate to dashboard and apply filter
+      navigateTo('dashboard');
+      setTimeout(() => {
+        const searchInput = document.getElementById('dashboardSearch');
+        if (searchInput) {
+          searchInput.value = filter;
+          dashFilters.search = filter;
+          dashFilter('search', filter);
+          renderFindingsTable(filter, dashFilters);
+        }
+      }, 300);
+    }
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
