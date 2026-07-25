@@ -1793,32 +1793,97 @@ select.input { cursor: pointer; }
 </div>
 
 <script>
+// ════ Storage Adapter — Dynamic Import from Launchpad ────────
+(function initStorageAdapter() {
+  window.__shieldStorageAdapter = null;
+  var vendoredAdapter = {
+    async read(key) {
+      try { var raw = localStorage.getItem(key); return raw === null || raw === undefined ? null : JSON.parse(raw); }
+      catch(e) { console.warn('[ShieldView storage] read error:', e.message); return null; }
+    },
+    async write(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch(e) { console.warn('[ShieldView storage] write error:', e.message); return false; }
+    },
+    async remove(key) {
+      try { localStorage.removeItem(key); return true; }
+      catch(e) { console.warn('[ShieldView storage] remove error:', e.message); return false; }
+    },
+    async readCollection(key) {
+      try { var raw = localStorage.getItem(key); if (!raw) return []; var val = JSON.parse(raw); return Array.isArray(val) ? val : (val.rows || val.data || []); }
+      catch(e) { return []; }
+    },
+    async writeCollection(key, records) {
+      try { localStorage.setItem(key, JSON.stringify(records)); return true; }
+      catch(e) { return false; }
+    },
+    async has(key) {
+      try { return localStorage.getItem(key) !== null; } catch(_) { return false; }
+    },
+    async quota() {
+      var used = 0;
+      try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k) used += k.length + (localStorage.getItem(k) || '').length; } } catch(_) {}
+      var usedBytes = used * 2, quotaBytes = 5 * 1024 * 1024;
+      return { usedBytes: usedBytes, quotaBytes: quotaBytes, remainingBytes: Math.max(0, quotaBytes - usedBytes), pctUsed: Math.round(usedBytes / quotaBytes * 100) };
+    }
+  };
+  // Try dynamic import from launchpad; fall back to vendored
+  try {
+    import('https://mrdchiang.github.io/launchpad/shared/storage-adapter.js')
+      .then(function(mod) {
+        window.__shieldStorageAdapter = mod.storage || mod.default || mod;
+        console.log('[ShieldView] ✅ Launchpad storage adapter loaded');
+      })
+      .catch(function() {
+        window.__shieldStorageAdapter = vendoredAdapter;
+        console.log('[ShieldView] ⚠️ Using vendored localStorage fallback');
+      });
+  } catch(e) {
+    window.__shieldStorageAdapter = vendoredAdapter;
+  }
+  // Synchronous fallback always immediately available
+  if (!window.__shieldStorageAdapter) {
+    window.__shieldStorageAdapter = vendoredAdapter;
+  }
+})();
+
+// ════ STORAGE Wrappers (sync helpers — swap backend here for IndexedDB) ──
+function shieldStorageGet(key) {
+  try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+function shieldStorageSet(key, value) {
+  try { localStorage.setItem(key, value); return true; } catch(e) { return false; }
+}
+function shieldStorageRemove(key) {
+  try { localStorage.removeItem(key); return true; } catch(e) { return false; }
+}
+
 // ════ Contract Version Check ─────────────────────────────────
 (function(){
   var CV = KEYS.CONTRACT_VERSION;
   var VER = '1.0.0';
   try {
-    var stored = localStorage.getItem(CV);
-    if (!stored) { localStorage.setItem(CV, VER); return; }
+    var stored = shieldStorageGet(CV);
+    if (!stored) { shieldStorageSet(CV, VER); return; }
     if (stored !== VER) {
       var b = document.createElement('div');
       b.style.cssText = 'background:#352215;color:#ff7722;padding:8px 16px;text-align:center;font-size:12px;font-family:monospace;cursor:pointer;z-index:99999;position:relative';
       b.textContent = '⚠ Contract v' + VER + ' ≠ stored v' + stored + '. Some features may not work. Click to dismiss.';
-      b.onclick = function(){ b.remove(); localStorage.setItem(CV, VER); };
+      b.onclick = function(){ b.remove(); shieldStorageSet(CV, VER); };
       document.body.insertBefore(b, document.body.firstChild);
     }
   } catch(e) {}
 })();
 
 // ════ Error Catcher ──────────────────────────────────────────
-(function(){'use strict';const SK=KEYS.ERROR_LOG,MX=200,TN=document.title||location.pathname.split('/').filter(Boolean).pop()||'Unknown';function gl(){try{return JSON.parse(localStorage.getItem(SK)||'[]')}catch(e){return[]}}function sl(l){try{while(l.length>MX)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e){try{while(l.length>50)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e2){}}}function ae(e){e.tool=TN;e.url=location.href;e.timestamp=new Date().toISOString();e.userAgent=navigator.userAgent;const l=gl();l.push(e);sl(l)}
+(function(){'use strict';const SK=KEYS.ERROR_LOG,MX=200,TN=document.title||location.pathname.split('/').filter(Boolean).pop()||'Unknown';function gl(){try{return JSON.parse(shieldStorageGet(SK)||'[]')}catch(e){return[]}}function sl(l){try{while(l.length>MX)l.shift();shieldStorageSet(SK,JSON.stringify(l))}catch(e){try{while(l.length>50)l.shift();shieldStorageSet(SK,JSON.stringify(l))}catch(e2){}}}function ae(e){e.tool=TN;e.url=location.href;e.timestamp=new Date().toISOString();e.userAgent=navigator.userAgent;const l=gl();l.push(e);sl(l)}
 window.onerror=function(m,s,l,c,err){ae({type:'runtime-error',message:String(m),source:s||'',line:l||0,col:c||0,stack:err&&err.stack?String(err.stack).slice(0,2000):''});return false};
 window.addEventListener('unhandledrejection',function(e){const r=e.reason;ae({type:'unhandled-rejection',message:String(r),stack:r&&r.stack?String(r.stack).slice(0,2000):''})});
 var oce=console.error;console.error=function(){try{var a=Array.prototype.slice.call(arguments);ae({type:'console-error',message:a.map(function(x){try{return typeof x==='object'?JSON.stringify(x,null,2).slice(0,500):String(x)}catch(e){return String(x)}}).join(' ').slice(0,2000),args:a.length})}catch(e){}return oce.apply(console,arguments)};
 window.__debugLog=function(m,d){ae({type:'manual',message:String(m),data:d?JSON.stringify(d).slice(0,1000):''})};
 console.log('['+TN+'] Error catcher active ✓');})();
 
-// ════ localStorage Keys ──────────────────────────────────────
+// ════ Storage Keys ──────────────────────────────────────────────
 const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue',SLA_POLICY:'security-tools:sla-policy',SNAPSHOT_PREFIX:'security-tools:findings-snapshot',SNAPSHOT_COUNT:12,LAST_DIFF:'security-tools:last-diff'};
 
 // ════ API Configuration ───────────────────────────────────────
@@ -1973,7 +2038,7 @@ let kevFetchInProgress = false;
 
 function loadKEVFromStorage() {
   try {
-    const raw = localStorage.getItem(KEYS.KEV_CATALOG);
+    const raw = shieldStorageGet(KEYS.KEV_CATALOG);
     if (raw) {
       const data = JSON.parse(raw);
       if (data && data.catalog && data.timestamp) {
@@ -1990,7 +2055,7 @@ function loadKEVFromStorage() {
 function saveKEVToStorage(catalog) {
   try {
     const data = { catalog, timestamp: new Date().toISOString() };
-    localStorage.setItem(KEYS.KEV_CATALOG, JSON.stringify(data));
+    shieldStorageSet(KEYS.KEV_CATALOG, JSON.stringify(data));
     kevCatalog = catalog;
     kevLastFetched = data.timestamp;
   } catch(e) { console.warn('Failed to save KEV to localStorage:', e); }
@@ -2183,7 +2248,7 @@ const SLA_DEFAULTS = { critical: 15, high: 30, medium: 90, low: 180 };
 
 function getSLAPolicy() {
   try {
-    const stored = localStorage.getItem(KEYS.SLA_POLICY);
+    const stored = shieldStorageGet(KEYS.SLA_POLICY);
     if (stored) {
       const p = JSON.parse(stored);
       return {
@@ -2198,7 +2263,7 @@ function getSLAPolicy() {
 }
 
 function saveSLAPolicy(policy) {
-  try { localStorage.setItem(KEYS.SLA_POLICY, JSON.stringify(policy)); } catch(e) {}
+  try { shieldStorageSet(KEYS.SLA_POLICY, JSON.stringify(policy)); } catch(e) {}
 }
 
 function resetSLAPolicy() {
@@ -2944,9 +3009,9 @@ let viewMode = 'cve'; // 'cve' or 'plugin'
 
 function loadImportedData() {
   try {
-    const f = localStorage.getItem(KEYS.IMPORTED_FINDINGS);
+    const f = shieldStorageGet(KEYS.IMPORTED_FINDINGS);
     if (f) importedFindings = JSON.parse(f);
-    const a = localStorage.getItem(KEYS.IMPORTED_ASSETS);
+    const a = shieldStorageGet(KEYS.IMPORTED_ASSETS);
     if (a) importedAssets = JSON.parse(a);
   } catch(e) {
     importedFindings = null;
@@ -2968,7 +3033,7 @@ let snipeitConfig = null;
 
 function loadSnipeITConfig() {
   try {
-    const c = localStorage.getItem(KEYS.SNIPEIT_CONFIG);
+    const c = shieldStorageGet(KEYS.SNIPEIT_CONFIG);
     if (c) snipeitConfig = JSON.parse(c);
   } catch(e) { snipeitConfig = null; }
 }
@@ -2977,13 +3042,13 @@ function saveSnipeITConfig() {
   const url = (document.getElementById('snipeitUrl')?.value || '').replace(/\/+$/, '');
   const key = document.getElementById('snipeitKey')?.value || '';
   snipeitConfig = { url, key };
-  try { localStorage.setItem(KEYS.SNIPEIT_CONFIG, JSON.stringify(snipeitConfig)); } catch(e) {}
+  try { shieldStorageSet(KEYS.SNIPEIT_CONFIG, JSON.stringify(snipeitConfig)); } catch(e) {}
 }
 
 function loadSnipeITData() {
   loadSnipeITConfig();
   try {
-    const a = localStorage.getItem(KEYS.SNIPEIT_ASSETS);
+    const a = shieldStorageGet(KEYS.SNIPEIT_ASSETS);
     if (a) snipeitAssets = JSON.parse(a);
   } catch(e) { snipeitAssets = null; }
 }
@@ -3054,8 +3119,8 @@ async function fetchSnipeITAssets() {
       hasMore = rows.length === limit;
     }
     snipeitAssets = allAssets;
-    try { localStorage.setItem(KEYS.SNIPEIT_ASSETS, JSON.stringify(snipeitAssets)); } catch(e) {}
-    try { localStorage.setItem(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({count: snipeitAssets.length, timestamp: new Date().toISOString()})); } catch(e) {}
+    try { shieldStorageSet(KEYS.SNIPEIT_ASSETS, JSON.stringify(snipeitAssets)); } catch(e) {}
+    try { shieldStorageSet(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({count: snipeitAssets.length, timestamp: new Date().toISOString()})); } catch(e) {}
 
     // Build summary
     const statusBreakdown = {};
@@ -3091,9 +3156,9 @@ async function fetchSnipeITAssets() {
 function clearSnipeIT() {
   snipeitAssets = null;
   snipeitConfig = null;
-  localStorage.removeItem(KEYS.SNIPEIT_ASSETS);
-  localStorage.removeItem(KEYS.SNIPEIT_ASSETS_META);
-  localStorage.removeItem(KEYS.SNIPEIT_CONFIG);
+  shieldStorageRemove(KEYS.SNIPEIT_ASSETS);
+  shieldStorageRemove(KEYS.SNIPEIT_ASSETS_META);
+  shieldStorageRemove(KEYS.SNIPEIT_CONFIG);
   document.getElementById('snipeitUrl').value = '';
   document.getElementById('snipeitKey').value = '';
   document.getElementById('snipeitStatus').innerHTML = '';
@@ -3142,8 +3207,8 @@ function loadDemoSnipeIT() {
   snipeitAssets = assets;
   snipeitConfig = { url: '(demo)', mode: 'demo', lastFetch: new Date().toISOString() };
   saveSnipeitConfig();
-  localStorage.setItem(KEYS.SNIPEIT_ASSETS, JSON.stringify({ rows: assets, total: assets.length }));
-  localStorage.setItem(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({ lastFetch: new Date().toISOString(), count: assets.length, status: 'demo' }));
+  shieldStorageSet(KEYS.SNIPEIT_ASSETS, JSON.stringify({ rows: assets, total: assets.length }));
+  shieldStorageSet(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({ lastFetch: new Date().toISOString(), count: assets.length, status: 'demo' }));
   const statusEl = document.getElementById('snipeitStatus');
   if (statusEl) statusEl.innerHTML = '<span class="success">✅ Demo data loaded — ' + assets.length + ' assets (simulated Snipe-IT inventory)</span>';
   document.getElementById('snipeitSummary').innerHTML = renderSnipeitSummary();
@@ -3306,8 +3371,8 @@ function handleFileSelect(event, type) {
 
       // Apply the new data
       importedFindings = newFindings;
-      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(newFindings)); } catch(e) {}
-      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS_META, JSON.stringify({fileName: file.name, count: newFindings.length, timestamp: new Date().toISOString()})); } catch(e) {}
+      try { shieldStorageSet(KEYS.IMPORTED_FINDINGS, JSON.stringify(newFindings)); } catch(e) {}
+      try { shieldStorageSet(KEYS.IMPORTED_FINDINGS_META, JSON.stringify({fileName: file.name, count: newFindings.length, timestamp: new Date().toISOString()})); } catch(e) {}
       if (importedAssets) {
         enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
       }
@@ -3327,8 +3392,8 @@ function handleFileSelect(event, type) {
     } else if (type === 'sccm') {
       const assets = parseSCCMCSV(rows);
       importedAssets = assets;
-      try { localStorage.setItem(KEYS.IMPORTED_ASSETS, JSON.stringify(assets)); } catch(e) {}
-      try { localStorage.setItem(KEYS.IMPORTED_ASSETS_META, JSON.stringify({fileName: file.name, count: assets.length, timestamp: new Date().toISOString()})); } catch(e) {}
+      try { shieldStorageSet(KEYS.IMPORTED_ASSETS, JSON.stringify(assets)); } catch(e) {}
+      try { shieldStorageSet(KEYS.IMPORTED_ASSETS_META, JSON.stringify({fileName: file.name, count: assets.length, timestamp: new Date().toISOString()})); } catch(e) {}
       if (importedFindings) {
         enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
       }
@@ -3367,14 +3432,14 @@ function clearImport(type) {
   if (type === 'tenable') {
     importedFindings = null;
     enrichedFindings = null;
-    localStorage.removeItem(KEYS.IMPORTED_FINDINGS);
-    localStorage.removeItem(KEYS.IMPORTED_FINDINGS_META);
+    shieldStorageRemove(KEYS.IMPORTED_FINDINGS);
+    shieldStorageRemove(KEYS.IMPORTED_FINDINGS_META);
     document.getElementById('statusTenable').innerHTML = '';
   } else {
     importedAssets = null;
     enrichedFindings = null;
-    localStorage.removeItem(KEYS.IMPORTED_ASSETS);
-    localStorage.removeItem(KEYS.IMPORTED_ASSETS_META);
+    shieldStorageRemove(KEYS.IMPORTED_ASSETS);
+    shieldStorageRemove(KEYS.IMPORTED_ASSETS_META);
     document.getElementById('statusSCCM').innerHTML = '';
   }
   updateImportSummary();
@@ -3396,7 +3461,7 @@ function updateImportSummary() {
 
   let html = '';
   if (hasFindings) {
-    const metaF = JSON.parse(localStorage.getItem(KEYS.IMPORTED_FINDINGS_META) || '{}');
+    const metaF = JSON.parse(shieldStorageGet(KEYS.IMPORTED_FINDINGS_META) || '{}');
     html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:20px">📄</span>
       <div><strong>${importedFindings.length.toLocaleString()}</strong> vulnerability findings imported
@@ -3404,7 +3469,7 @@ function updateImportSummary() {
     </div>`;
   }
   if (hasAssets) {
-    const metaA = JSON.parse(localStorage.getItem(KEYS.IMPORTED_ASSETS_META) || '{}');
+    const metaA = JSON.parse(shieldStorageGet(KEYS.IMPORTED_ASSETS_META) || '{}');
     html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:20px">💻</span>
       <div><strong>${importedAssets.length.toLocaleString()}</strong> device assets imported
@@ -3463,11 +3528,11 @@ function renderSetupPage() {
   updateImportSummary();
   // Restore status displays
   if (importedFindings) {
-    const metaF = JSON.parse(localStorage.getItem(KEYS.IMPORTED_FINDINGS_META) || '{}');
+    const metaF = JSON.parse(shieldStorageGet(KEYS.IMPORTED_FINDINGS_META) || '{}');
     updateImportStatus('tenable', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
   }
   if (importedAssets) {
-    const metaA = JSON.parse(localStorage.getItem(KEYS.IMPORTED_ASSETS_META) || '{}');
+    const metaA = JSON.parse(shieldStorageGet(KEYS.IMPORTED_ASSETS_META) || '{}');
     updateImportStatus('sccm', metaA.fileName || 'devices.csv', importedAssets.length, 'ok');
   }
   // Restore Snipe-IT config
@@ -5525,7 +5590,7 @@ function renderPipelineBar() {
   const text = document.getElementById('pipelineBarText');
   const ts = document.getElementById('pipelineBarTs');
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.REMEDIATION_QUEUE) || '[]');
     if (queue.length === 0) {
       bar.style.display = 'none';
       barEmpty.style.display = 'flex';
@@ -5549,11 +5614,11 @@ function renderPipelineBar() {
 
 function resendAllFindings() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.REMEDIATION_QUEUE) || '[]');
     if (queue.length === 0) { showToast('Nothing to resend'); return; }
     // Mark all as pending and update timestamp
     queue.forEach(item => { item.status = 'pending'; item.timestamp = new Date().toISOString(); });
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    shieldStorageSet(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     renderPipelineBar();
     showToast('✓ Re-sent ' + queue.length + ' findings to RemFlow queue');
   } catch(e) {
@@ -5564,7 +5629,7 @@ function resendAllFindings() {
 // ===== PIPELINE PAGE =====
 function renderPipelinePage() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.REMEDIATION_QUEUE) || '[]');
     const totalSent = queue.length;
 
     // ShieldView status — always "source" (it's the start of pipeline)
@@ -5647,12 +5712,12 @@ function sendToRemFlow(cveId, title, severity) {
   const tf = allFindings.find(f => f.cve === cveId && f.solution);
   const item = {cve: cveId, title: title, severity: severity, from: 'ShieldView', timestamp: new Date().toISOString(), status: 'pending', solution: tf?.solution || '', description: tf?.description || '', synopsis: tf?.synopsis || ''};
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.REMEDIATION_QUEUE) || '[]');
     if (!queue.some(i => i.cve === cveId)) {
       queue.push(item);
     }
-    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
-    localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify(item));
+    shieldStorageSet(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    shieldStorageSet(KEYS.LAST_REMEDIATION, JSON.stringify(item));
     renderPipelineBar();
     showToast('✓ Sent to RemFlow — open it to start remediation');
   } catch(e) {
@@ -5739,7 +5804,7 @@ function loadSnapshots() {
   const snapshots = [];
   for (let i = 0; i < KEYS.SNAPSHOT_COUNT; i++) {
     try {
-      const raw = localStorage.getItem(KEYS.SNAPSHOT_PREFIX + '-' + i);
+      const raw = shieldStorageGet(KEYS.SNAPSHOT_PREFIX + '-' + i);
       if (raw) snapshots.push(JSON.parse(raw));
     } catch(e) {}
   }
@@ -5755,7 +5820,7 @@ function saveFindingsSnapshot() {
     activeCount: current.filter(f => f.state === 'Active').length,
   };
   const key = KEYS.SNAPSHOT_PREFIX + '-' + (snapshotIndex % KEYS.SNAPSHOT_COUNT);
-  try { localStorage.setItem(key, JSON.stringify(snapshot)); } catch(e) {}
+  try { shieldStorageSet(key, JSON.stringify(snapshot)); } catch(e) {}
   snapshotIndex = (snapshotIndex + 1) % KEYS.SNAPSHOT_COUNT;
 }
 
@@ -5820,7 +5885,7 @@ function saveDiff(findings, diff) {
 
   // Store last diff data for the modal
   try {
-    localStorage.setItem(KEYS.LAST_DIFF, JSON.stringify({
+    shieldStorageSet(KEYS.LAST_DIFF, JSON.stringify({
       timestamp: new Date().toISOString(),
       new: diff.new.length,
       resolved: diff.resolved.length,
@@ -5911,7 +5976,7 @@ function showDiffDrilldown(category) {
   // Use summary data from LAST_DIFF for drilldown items
   let drillItems = [];
   try {
-    const lastDiff = JSON.parse(localStorage.getItem(KEYS.LAST_DIFF) || '{}');
+    const lastDiff = JSON.parse(shieldStorageGet(KEYS.LAST_DIFF) || '{}');
     const key = category + 'Items';
     drillItems = lastDiff[key] || [];
   } catch(e) {}
@@ -6052,7 +6117,7 @@ setTimeout(hookExportButtons, 1500);
 // ===== VERIFIED QUEUE DRAIN =====
 function drainVerifiedQueue() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.VERIFIED_QUEUE) || '[]');
     if (!Array.isArray(queue) || queue.length === 0) return;
     const findings = getActiveFindings();
     if (!findings || findings.length === 0) { /* no data yet, keep queue */ return; }
@@ -6097,11 +6162,11 @@ function drainVerifiedQueue() {
       }
     });
     // Clear the queue (items that had no matching finding stay in queue for later)
-    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(remaining));
+    shieldStorageSet(KEYS.VERIFIED_QUEUE, JSON.stringify(remaining));
     if (changed) {
-      // Persist the modified findings back to localStorage
+      // Persist the modified findings back to storage
       if (importedFindings) {
-        try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(importedFindings)); } catch(e) {}
+        try { shieldStorageSet(KEYS.IMPORTED_FINDINGS, JSON.stringify(importedFindings)); } catch(e) {}
       }
       updateDashboardStats();
       renderFindingsTable(dashFilters.search || '', dashFilters);
@@ -6310,7 +6375,7 @@ console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 // Cross-tool bridge — show pending count in sidebar
 (function showPendingCount() {
   try {
-    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
+    const queue = JSON.parse(shieldStorageGet(KEYS.REMEDIATION_QUEUE) || '[]');
     const pending = queue.filter(i => i.status === 'pending').length;
     const existing = document.getElementById('cross-tool-badge');
     if (existing) existing.remove();
