@@ -568,6 +568,139 @@ select.input { cursor: pointer; }
   background: var(--info-bg);
   color: var(--info);
 }
+
+/* ===== EXECUTIVE PAGE v2 ===== */
+.exec-top-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.exec-stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  transition: all 0.15s;
+}
+.exec-stat-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.exec-stat-card .exec-stat-val { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.exec-stat-card .exec-stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.exec-stat-card .exec-stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Trend chart */
+.trend-chart-wrap {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.trend-chart-wrap svg { width: 100%; height: auto; }
+.trend-tooltip {
+  position: absolute;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.trend-tooltip.show { opacity: 1; }
+
+/* Team exec card grid */
+.team-exec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.team-exec-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.team-exec-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.team-exec-card .team-exec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.team-exec-card .team-exec-icon { font-size: 22px; }
+.team-exec-card .team-exec-name { font-size: 14px; font-weight: 700; }
+.team-exec-card .team-exec-badge { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+.team-exec-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.team-exec-stat { text-align: center; }
+.team-exec-stat .val { font-size: 18px; font-weight: 700; }
+.team-exec-stat .lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+.team-exec-bar-wrap {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.team-exec-bar-wrap .bar-crit { background: var(--critical); }
+.team-exec-bar-wrap .bar-high { background: var(--high); }
+.team-exec-bar-wrap .bar-med { background: var(--medium); }
+.team-exec-bar-wrap .bar-low { background: var(--low); }
+
+/* Risk grade */
+.risk-grade-a { color: var(--success); }
+.risk-grade-b { color: #66cc88; }
+.risk-grade-c { color: var(--warning); }
+.risk-grade-d { color: var(--high); }
+.risk-grade-f { color: var(--critical); }
+
+/* Risk summary */
+.risk-summary {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.risk-summary strong { color: var(--text-primary); }
+
+/* Top CVEs table — compact */
+.top-cves-table { font-size: 12px; }
+.top-cves-table th { font-size: 11px; padding: 8px 10px; }
+.top-cves-table td { padding: 8px 10px; font-size: 12px; }
+
+/* Executive export button area */
+.exec-export-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .exec-top-stats { grid-template-columns: repeat(2, 1fr); }
+  .team-exec-grid { grid-template-columns: 1fr; }
+  .team-exec-stats { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
@@ -1311,6 +1444,10 @@ select.input { cursor: pointer; }
           <div class="card-title" style="margin-bottom:16px">Changelog</div>
           <div style="display:flex;flex-direction:column;gap:20px">
             <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v4.0.0</div>
+              <div style="font-size:13px">Executive page rebuild: team assignment engine (Endpoint/Factory/Networking/Servers), SVG trend line chart, team breakdown cards with severity bars, Top 5 CVEs table, auto-generated risk summary, and executive report export. All vanilla JS + inline SVG.</div>
+            </div>
+            <div>
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v3.0.0</div>
               <div style="font-size:13px">🪦 End of Life detection engine with comprehensive OS/software EOL database, fuzzy-matching, EOL summary card on Dashboard, EOL Status column/filter on Assets page, and per-asset EOL detail view.</div>
             </div>
@@ -2009,6 +2146,8 @@ function parseSCCMCSV(rows) {
 
     // Infer server roles
     const roles = inferServerRoles(hostname, adou, explicitRole, os);
+    // Assign team
+    const team = assignTeam(hostname, os, adou, roles);
 
     assets.push({
       hostname: hostname,
@@ -2017,6 +2156,7 @@ function parseSCCMCSV(rows) {
       deviceUser: lastUser,
       serverRoles: roles,
       isVirtual: isVM,
+      team: team,
       manufacturer: idx.manufacturer >= 0 ? r[idx.manufacturer] : '',
       model: idx.model >= 0 ? r[idx.model] : '',
       lastSeen: new Date().toISOString().slice(0, 10),
@@ -2125,6 +2265,7 @@ function joinFindingsWithAssets(findings, assets) {
         deviceUser: match.deviceUser || 'Unknown',
         serverRoles: match.serverRoles || ['Unknown'],
         assetOS: match.os || '',
+        team: match.team || assignTeam(f.asset, match.os, match.ou, match.serverRoles),
       };
     }
     return {
@@ -2133,8 +2274,38 @@ function joinFindingsWithAssets(findings, assets) {
       deviceUser: 'Unknown',
       serverRoles: ['Unknown'],
       assetOS: '',
+      team: assignTeam(f.asset, '', '', []),
     };
   });
+}
+
+// ===== TEAM ASSIGNMENT ENGINE =====
+function assignTeam(hostname, os, ou, serverRoles) {
+  const hn = (hostname || '').toUpperCase();
+  const ouUp = (ou || '').toUpperCase();
+  const osLower = (os || '').toLowerCase();
+  const roles = (serverRoles || []).map(r => r.toUpperCase()).join(' ');
+
+  // Endpoint check
+  if (['MAC-','LAP-','WKS-','VDI-','DESK-'].some(p => hn.startsWith(p))) return 'Endpoint';
+  if (roles.includes('WORKSTATION')) return 'Endpoint';
+  if (osLower.includes('macos') || osLower.includes('mac os')) return 'Endpoint';
+
+  // Factory check
+  if (['MFG-','PLC-','SCADA-','HMI-','OPS-','FLOOR-'].some(p => hn.startsWith(p))) return 'Factory';
+  if (ouUp.includes('FACTORY') || ouUp.includes('MANUFACTURING') || ouUp.includes('OT')) return 'Factory';
+
+  // Networking check
+  if (['CSW-','RTR-','FW-','VPN-','LB-','WLC-','AP-'].some(p => hn.startsWith(p))) return 'Networking';
+  if (roles.includes('NETWORKDEVICE') || roles.includes('FIREWALL')) return 'Networking';
+  if (osLower.includes('pan-os') || osLower.includes('ios')) return 'Networking';
+
+  // Servers check
+  if (['DC-','WEB-','APP-','DB-','SQL-','EXCH-','SRV-','K8S-','JENKINS-','VCENTER-','BKUP-','NPS-','PRINT-','SIEM-'].some(p => hn.startsWith(p))) return 'Servers';
+  if (roles.includes('SERVER') || roles.includes('DOMAINCONTROLLER') || roles.includes('SQLSERVER') || roles.includes('IISSERVER') || roles.includes('EXCHANGESERVER')) return 'Servers';
+
+  // Default
+  return 'Servers';
 }
 
 function getActiveFindings() {
@@ -2492,10 +2663,11 @@ function closeDispDropdown() {
   if (d) d.remove();
 }
 
-// ===== RENDER EXECUTIVE PAGE =====
+// ===== RENDER EXECUTIVE PAGE v2 =====
 function renderExecutivePage() {
   const allFindings = getActiveFindings();
   const active = allFindings.filter(f => f.state === 'Active');
+  const fixed = allFindings.filter(f => f.state === 'Fixed');
   const critical = active.filter(f => f.severity === 'Critical');
   const high = active.filter(f => f.severity === 'High');
   const medium = active.filter(f => f.severity === 'Medium');
@@ -2505,112 +2677,505 @@ function renderExecutivePage() {
   const totalAssets = [...new Set(active.map(f => f.asset))];
   const total = active.length;
 
-  // Team breakdown with KEV
-  const teamRows = Object.entries(TEAMS).map(([slug, t]) => {
-    const teamKEV = allFindings.filter(f => f.kev && f.state === 'Active' && t.assets_list.some(a => a.name === f.asset)).length;
-    return { name: t.name, total: t.total, critical: t.critical, high: t.high, kev: teamKEV, delta: t.deltaTotal };
-  }).sort((a,b) => b.total - a.total);
+  // Remediation rate: resolved / total ever seen
+  const totalAll = allFindings.length;
+  const resolvedCount = fixed.length + allFindings.filter(f => f.state === 'Actioned').length;
+  const remediationRate = totalAll > 0 ? Math.round((resolvedCount / (totalAll)) * 100) : 0;
+
+  // Risk score: A-F grade
+  const riskInputs = { critPct: total > 0 ? critical.length/total : 0, kevCount: kev.length, total, eolCount: 0 };
+  // Count EOL assets
+  const allAssetNames = new Set();
+  for (const [slug, t] of Object.entries(TEAMS)) { t.assets_list.forEach(a => allAssetNames.add(a.name)); }
+  let eolAssetCount = 0;
+  allAssetNames.forEach(name => { const e = getAssetEOL(name); if (getWorstEOLStatus(e) === 'eol') eolAssetCount++; });
+  riskInputs.eolCount = eolAssetCount;
+  const riskScore = computeRiskScore(riskInputs);
+
+  // Team data by assignment engine (4 teams)
+  const TEAM_CONFIG = {
+    'Endpoint': { icon: '🖥️', name: 'Endpoint' },
+    'Factory': { icon: '🏭', name: 'Factory' },
+    'Networking': { icon: '🌐', name: 'Networking' },
+    'Servers': { icon: '🖧', name: 'Servers' },
+  };
+
+  // Build team stats from active findings using assignTeam
+  const teamStats = {};
+  for (const key of ['Endpoint','Factory','Networking','Servers']) {
+    teamStats[key] = { name: key, icon: TEAM_CONFIG[key].icon, total: 0, critical: 0, high: 0, medium: 0, low: 0, kev: 0, eol: 0, assetSet: new Set() };
+  }
+
+  // For each active finding, determine team and count
+  active.forEach(f => {
+    const team = f.team || assignTeam(f.asset, f.assetOS || '', f.ou || '', f.serverRoles || []);
+    const t = teamStats[team];
+    if (!t) {
+      // Map to closest if needed
+      const mapped = (team === 'Endpoint' || team === 'Factory' || team === 'Networking') ? team : 'Servers';
+      const tt = teamStats[mapped];
+      if (tt) {
+        tt.total++;
+        if (f.severity === 'Critical') tt.critical++;
+        if (f.severity === 'High') tt.high++;
+        if (f.severity === 'Medium') tt.medium++;
+        if (f.severity === 'Low') tt.low++;
+        if (f.kev) tt.kev++;
+        tt.assetSet.add(f.asset);
+      }
+      return;
+    }
+    t.total++;
+    if (f.severity === 'Critical') t.critical++;
+    if (f.severity === 'High') t.high++;
+    if (f.severity === 'Medium') t.medium++;
+    if (f.severity === 'Low') t.low++;
+    if (f.kev) t.kev++;
+    t.assetSet.add(f.asset);
+  });
+
+  // Count EOL per team
+  for (const [slug, t] of Object.entries(TEAMS)) {
+    t.assets_list.forEach(a => {
+      const eol = getAssetEOL(a.name);
+      const worst = getWorstEOLStatus(eol);
+      if (worst === 'eol') {
+        const team = assignTeam(a.name, a.os, a.ou || '', []);
+        const st = teamStats[team];
+        if (st) st.eol++;
+      }
+    });
+  }
+
+  const sortedTeams = Object.values(teamStats).filter(t => t.total > 0).sort((a,b) => b.total - a.total);
+  if (sortedTeams.length === 0) {
+    // Fallback: create from existing TEAMS data
+    sortedTeams.push({ name: 'Servers', icon: '🖧', total: active.length, critical: critical.length, high: high.length, medium: medium.length, low: low.length, kev: kev.length, eol: 0, assetSet: new Set() });
+  }
+
+  // Top 5 CVEs by asset count
+  const cveAssetMap = {};
+  active.forEach(f => {
+    if (!cveAssetMap[f.cve]) cveAssetMap[f.cve] = new Set();
+    cveAssetMap[f.cve].add(f.asset);
+  });
+  const topCVEs = Object.entries(cveAssetMap)
+    .map(([cve, assets]) => ({ cve, assets: assets.size, info: CVES[cve], hasKEV: [...assets].some(a => active.some(f => f.cve === cve && f.asset === a && f.kev)) }))
+    .sort((a,b) => b.assets - a.assets).slice(0, 5);
 
   const page = document.getElementById('page-executive');
 
   page.innerHTML = `
-    <div class="kpi-strip">
-      <div class="kpi-item"><div class="kpi-value">${total}</div><div class="kpi-label">Total Active</div><div class="kpi-delta down" style="color:var(--success)">Last scan: 2026-06-28</div></div>
-      <div class="kpi-item"><div class="kpi-value" style="color:var(--critical)">${critical.length}</div><div class="kpi-label">Critical</div><div class="kpi-delta down" style="color:var(--success)">${critical.length} active</div></div>
-      <div class="kpi-item"><div class="kpi-value">${distinct.length}</div><div class="kpi-label">Distinct CVEs</div><div class="kpi-delta" style="color:var(--text-muted)">Across ${totalAssets.length} assets</div></div>
-      <div class="kpi-item"><div class="kpi-value" style="color:var(--danger)">${kev.length}</div><div class="kpi-label">KEV Exploited</div><div class="kpi-delta" style="color:var(--danger)">CISA Catalog matches</div></div>
-      <div class="kpi-item"><div class="kpi-value">${totalAssets.length}</div><div class="kpi-label">Assets Affected</div><div class="kpi-delta" style="color:var(--text-muted)">7 teams</div></div>
+    <!-- A. Top Stat Strip -->
+    <div class="exec-export-bar">
+      <button class="btn btn-primary" onclick="exportExecutiveReport()" style="padding:8px 16px">📥 Export Executive Report</button>
+      <span style="font-size:12px;color:var(--text-muted)">Report generated: ${new Date().toISOString().slice(0,10)}</span>
+    </div>
+    <div class="exec-top-stats">
+      <div class="exec-stat-card" style="border-left:3px solid var(--accent)">
+        <div class="exec-stat-val" style="color:var(--text-primary)">${total.toLocaleString()}</div>
+        <div class="exec-stat-label">Total Active Findings</div>
+        <div class="exec-stat-sub">${distinct.length} distinct CVEs · ${totalAssets.length} assets</div>
+      </div>
+      <div class="exec-stat-card" style="border-left:3px solid var(--danger)">
+        <div class="exec-stat-val" style="color:var(--danger)">${kev.length}</div>
+        <div class="exec-stat-label">KEV Exploited</div>
+        <div class="exec-stat-sub">CISA Catalog · ${kev.filter(f=>f.severity==='Critical').length} critical</div>
+      </div>
+      <div class="exec-stat-card" style="border-left:3px solid var(--success)">
+        <div class="exec-stat-val" style="color:var(--success)">${remediationRate}%</div>
+        <div class="exec-stat-label">Remediation Rate</div>
+        <div class="exec-stat-sub">${resolvedCount} resolved/actioned of ${totalAll} total</div>
+      </div>
+      <div class="exec-stat-card" style="border-left:3px solid ${riskScore.color}">
+        <div class="exec-stat-val risk-grade-${riskScore.grade.toLowerCase()}">${riskScore.grade}</div>
+        <div class="exec-stat-label">Overall Risk Score</div>
+        <div class="exec-stat-sub">${riskScore.label} · ${critical.length} crit · ${kev.length} KEV · ${eolAssetCount} EOL</div>
+      </div>
     </div>
 
-    <div class="cols">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:16px">Severity Breakdown</div>
-        <div class="donut-wrap">
-          <svg width="180" height="180" viewBox="0 0 180 180">
-            <circle cx="90" cy="90" r="70" fill="none" stroke="var(--bg-hover)" stroke-width="24"/>
-            <circle cx="90" cy="90" r="70" fill="none" stroke="#ff4444" stroke-width="24"
-              stroke-dasharray="440" stroke-dashoffset="${440 - (440 * critical.length / Math.max(total,1))}" transform="rotate(-90 90 90)"/>
-            <circle cx="90" cy="90" r="70" fill="none" stroke="#ff7722" stroke-width="24"
-              stroke-dasharray="440" stroke-dashoffset="${440 - (440 * high.length / Math.max(total,1))}" transform="rotate(-90 90 90)"/>
-            <circle cx="90" cy="90" r="70" fill="none" stroke="#e6b800" stroke-width="24"
-              stroke-dasharray="440" stroke-dashoffset="${440 - (440 * medium.length / Math.max(total,1))}" transform="rotate(-90 90 90)"/>
-            <circle cx="90" cy="90" r="70" fill="none" stroke="#22cc66" stroke-width="24"
-              stroke-dasharray="440" stroke-dashoffset="${440 - (440 * low.length / Math.max(total,1))}" transform="rotate(-90 90 90)"/>
-            <text x="90" y="86" text-anchor="middle" fill="var(--text-primary)" font-size="22" font-weight="700">${total}</text>
-            <text x="90" y="106" text-anchor="middle" fill="var(--text-muted)" font-size="11">Active</text>
-          </svg>
-          <div class="donut-legend">
-            <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#ff4444"></span> Critical (${(critical.length/total*100).toFixed(1)}%) <span class="donut-legend-val">${critical.length}</span></div>
-            <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#ff7722"></span> High (${(high.length/total*100).toFixed(1)}%) <span class="donut-legend-val">${high.length}</span></div>
-            <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#e6b800"></span> Medium (${(medium.length/total*100).toFixed(1)}%) <span class="donut-legend-val">${medium.length}</span></div>
-            <div class="donut-legend-item"><span class="donut-legend-dot" style="background:#22cc66"></span> Low (${(low.length/total*100).toFixed(1)}%) <span class="donut-legend-val">${low.length}</span></div>
+    <!-- B. Trend Chart -->
+    ${renderTrendChartSVG(allFindings)}
+
+    <!-- C. Team Breakdown (2x2 grid) -->
+    <div class="team-exec-grid">
+      ${sortedTeams.map(t => {
+        const maxSev = Math.max(t.total, 1);
+        const critPct = Math.round((t.critical / maxSev) * 100);
+        const highPct = Math.round((t.high / maxSev) * 100);
+        const medPct = Math.round((t.medium / maxSev) * 100);
+        const lowPct = Math.round((t.low / maxSev) * 100);
+        const teamSlug = t.name.toLowerCase();
+        return `<div class="team-exec-card" onclick="execFilterByTeam('${teamSlug}')">
+          <div class="team-exec-header">
+            <span class="team-exec-icon">${t.icon}</span>
+            <span class="team-exec-name">${t.name}</span>
+            <span class="team-exec-badge">${t.assetSet ? t.assetSet.size : 0} assets</span>
           </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="margin-bottom:16px">Team Breakdown</div>
-        <table>
-          <thead><tr><th>Team</th><th>Total</th><th>Critical</th><th>High</th><th>KEV</th><th>Δ MoM</th></tr></thead>
-          <tbody>
-            ${teamRows.map(t => `<tr>
-              <td>${t.name}</td><td class="mono">${t.total.toLocaleString()}</td>
-              <td style="color:var(--critical)">${t.critical}</td>
-              <td style="color:var(--high)">${t.high}</td>
-              <td style="color:${t.kev>0?'var(--danger)':'var(--text-muted)'}">${t.kev>0?'⚠ '+t.kev:'—'}</td>
-              <td style="color:${t.delta>0?'var(--danger)':'var(--success)'}">${t.delta>0?'↑':'↓'} ${Math.abs(t.delta)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+          <div class="team-exec-stats">
+            <div class="team-exec-stat"><div class="val" style="color:var(--text-primary)">${t.total}</div><div class="lbl">Active</div></div>
+            <div class="team-exec-stat"><div class="val" style="color:var(--critical)">${t.critical}</div><div class="lbl">Critical</div></div>
+            <div class="team-exec-stat"><div class="val" style="color:var(--danger)">${t.kev || '—'}</div><div class="lbl">KEV</div></div>
+            <div class="team-exec-stat"><div class="val" style="color:${t.eol > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${t.eol || '—'}</div><div class="lbl">EOL</div></div>
+          </div>
+          <div class="team-exec-bar-wrap">
+            <div class="bar-crit" style="width:${critPct}%"></div>
+            <div class="bar-high" style="width:${highPct}%"></div>
+            <div class="bar-med" style="width:${medPct}%"></div>
+            <div class="bar-low" style="width:${lowPct}%"></div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
 
-    <div class="cols" style="margin-top:8px">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:12px">Disposition Summary — Active Findings</div>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${(() => {
-            const counts = {};
-            active.forEach(f => { counts[f.disposition] = (counts[f.disposition] || 0) + 1; });
-            return Object.entries(DISPOSITIONS).map(([name, d]) => {
-              const count = counts[name] || 0;
-              const pct = total > 0 ? (count / total * 100).toFixed(1) : '0';
-              return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
-                <div style="width:10px;height:10px;border-radius:2px;background:${d.color};flex-shrink:0"></div>
-                <span style="font-size:13px;flex:1">${d.label}</span>
-                <span style="font-size:13px;font-weight:600;color:${d.color};min-width:24px;text-align:right">${count}</span>
-                <div style="width:80px;height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden">
-                  <div style="height:100%;width:${pct}%;background:${d.color};border-radius:3px"></div>
-                </div>
-                <span style="font-size:11px;color:var(--text-muted);min-width:36px;text-align:right">${pct}%</span>
-              </div>`;
-            }).join('');
-          })()}
-        </div>
+    <!-- D. Top CVEs Table -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🔝 Top 5 CVEs by Asset Count</span>
       </div>
-
-      <div class="card">
-        <div class="card-title" style="margin-bottom:16px">KEV Exploited Vulnerabilities — CISA Catalog</div>
-      <table>
-        <thead><tr><th>CVE</th><th>Title</th><th>Assets</th><th>Severity</th><th>Ransomware</th><th>Due Date</th></tr></thead>
+      <table class="top-cves-table">
+        <thead><tr><th>CVE</th><th>Title</th><th>Assets</th><th>Severity</th><th>KEV</th></tr></thead>
         <tbody>
-          ${[...new Set(kev.map(f => f.cve))].map(cveId => {
-            const c = CVES[cveId];
-            const assets = [...new Set(kev.filter(f=>f.cve===cveId).map(f=>f.asset))];
-            return c ? `<tr class="clickable" onclick="viewCVE('${cveId}')">
-              <td class="mono text-link">${cveId}</td>
-              <td>${c.title}</td>
-              <td class="mono">${assets.length}</td>
-              <td><span class="badge badge-${c.severity.toLowerCase()}">${c.severity}</span></td>
-              <td>${c.ransomware?'<span style="color:var(--danger)">⚠ Yes</span>':'No'}</td>
-              <td style="font-size:12px;color:var(--text-muted)">${c.due||'—'}</td>
-            </tr>` : '';
+          ${topCVEs.map(c => {
+            const sev = (c.info && c.info.severity) || (active.find(f=>f.cve===c.cve)?.severity) || 'Medium';
+            const title = (c.info && c.info.title) || c.cve;
+            return `<tr class="clickable" onclick="viewCVE('${c.cve}')">
+              <td class="mono text-link">${c.cve}</td>
+              <td>${title.length > 60 ? title.slice(0,57)+'...' : title}</td>
+              <td class="mono">${c.assets}</td>
+              <td><span class="badge badge-${sev.toLowerCase()}">${sev}</span></td>
+              <td>${c.hasKEV ? '<span style="color:var(--danger)">⚠ KEV</span>' : '—'}</td>
+            </tr>`;
           }).join('')}
         </tbody>
       </table>
     </div>
+
+    <!-- E. Risk Summary -->
+    <div class="risk-summary">
+      ${generateRiskSummary(total, critical.length, kev.length, sortedTeams, remediationRate, eolAssetCount, distinct.length)}
     </div>
   `;
+}
+
+// ===== EXECUTIVE HELPER: Risk Score =====
+function computeRiskScore(inputs) {
+  const { critPct, kevCount, total, eolCount } = inputs;
+  let score = 0;
+  score += critPct * 40; // Critical % (max 40 pts)
+  score += Math.min(kevCount / 5, 1) * 30; // KEV count (max 30 pts)
+  score += Math.min(eolCount / 3, 1) * 20; // EOL count (max 20 pts)
+  score += Math.min(total / 200, 1) * 10; // Total volume (max 10 pts)
+  const pct = Math.min(100, Math.round(score));
+
+  let grade, label, color;
+  if (pct <= 20) { grade = 'A'; label = 'Excellent'; color = 'var(--success)'; }
+  else if (pct <= 40) { grade = 'B'; label = 'Good'; color = '#66cc88'; }
+  else if (pct <= 60) { grade = 'C'; label = 'Fair'; color = 'var(--warning)'; }
+  else if (pct <= 80) { grade = 'D'; label = 'Poor'; color = 'var(--high)'; }
+  else { grade = 'F'; label = 'Critical'; color = 'var(--critical)'; }
+
+  return { grade, label, color, pct };
+}
+
+// ===== EXECUTIVE HELPER: Trend Chart SVG =====
+function renderTrendChartSVG(allFindings) {
+  // Build monthly timeline from firstSeen dates
+  const today = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    months.push({ label: d.toLocaleString('en-US', {month:'short', year:'2-digit'}), key: d.toISOString().slice(0,7), newF: 0, resolvedF: 0 });
+  }
+
+  // Count findings per month
+  const monthKeys = new Set(months.map(m => m.key));
+  allFindings.forEach(f => {
+    const fs = f.firstSeen || '';
+    const mk = fs.slice(0, 7);
+    if (monthKeys.has(mk)) {
+      const m = months.find(x => x.key === mk);
+      if (m) m.newF++;
+    }
+    // Resolved items
+    if (f.state === 'Fixed' || f.state === 'Actioned') {
+      // Use firstSeen as a proxy month (real system would have resolvedAt)
+      if (monthKeys.has(mk)) {
+        const m = months.find(x => x.key === mk);
+        if (m) m.resolvedF++;
+      }
+    }
+  });
+
+  // Build running totals
+  let runningActive = 0;
+  const activeData = [];
+  const resolvedData = [];
+  let runningResolved = 0;
+
+  months.forEach(m => {
+    runningActive += m.newF;
+    runningResolved += m.resolvedF;
+    activeData.push(runningActive);
+    resolvedData.push(runningResolved);
+  });
+
+  const maxVal = Math.max(...activeData.concat(resolvedData), 1);
+  const maxY = Math.ceil(maxVal * 1.15);
+
+  // SVG dimensions
+  const pad = { top: 20, right: 20, bottom: 40, left: 50 };
+  const width = 760;
+  const height = 260;
+  const chartW = width - pad.left - pad.right;
+  const chartH = height - pad.top - pad.bottom;
+
+  const xScale = (i) => pad.left + (i / (months.length - 1)) * chartW;
+  const yScale = (v) => pad.top + chartH - (v / maxY) * chartH;
+
+  // Y-axis ticks
+  const yTicks = 5;
+  let yAxisHTML = '';
+  for (let t = 0; t <= yTicks; t++) {
+    const val = Math.round((maxY / yTicks) * t);
+    const y = yScale(val);
+    yAxisHTML += `<line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="var(--border)" stroke-dasharray="3,3"/>\n`;
+    yAxisHTML += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="var(--text-muted)" font-size="10">${val}</text>\n`;
+  }
+
+  // X-axis labels
+  let xAxisHTML = '';
+  const labelInterval = months.length > 6 ? 2 : 1;
+  for (let i = 0; i < months.length; i++) {
+    if (i % labelInterval === 0 || i === months.length - 1) {
+      xAxisHTML += `<text x="${xScale(i)}" y="${height - 10}" text-anchor="middle" fill="var(--text-muted)" font-size="10">${months[i].label}</text>\n`;
+    }
+  }
+
+  // Build polyline for Active
+  const activePoints = activeData.map((v, i) => `${xScale(i)},${yScale(v)}`).join(' ');
+  const resolvedPoints = resolvedData.map((v, i) => `${xScale(i)},${yScale(v)}`).join(' ');
+
+  // Active area fill gradient
+  const areaActivePoints = `${xScale(0)},${yScale(0)} ${activePoints} ${xScale(months.length-1)},${yScale(0)}`;
+
+  // Dots for tooltips
+  let dotsHTML = '';
+  for (let i = 0; i < months.length; i++) {
+    dotsHTML += `<circle cx="${xScale(i)}" cy="${yScale(activeData[i])}" r="3" fill="var(--accent)" style="cursor:pointer" 
+      onmouseenter="showTrendTooltip(event, '${months[i].label}', ${activeData[i]}, ${resolvedData[i]}, ${months[i].newF}, ${months[i].resolvedF})"
+      onmouseleave="hideTrendTooltip()"/>\n`;
+  }
+
+  return `<div class="trend-chart-wrap" style="position:relative">
+    <div class="card-title" style="margin-bottom:12px">📈 Vulnerability Trend — Last 12 Months</div>
+    <div class="trend-legend" style="display:flex;gap:16px;margin-bottom:8px;font-size:12px">
+      <span><span style="display:inline-block;width:12px;height:3px;background:var(--accent);vertical-align:middle;margin-right:4px"></span> Active Findings</span>
+      <span><span style="display:inline-block;width:12px;height:3px;background:var(--success);vertical-align:middle;margin-right:4px"></span> Resolved</span>
+    </div>
+    <div id="trendTooltip" class="trend-tooltip"></div>
+    <svg viewBox="0 0 ${width} ${height}" style="width:100%">
+      <!-- Grid -->
+      ${yAxisHTML}
+      ${xAxisHTML}
+
+      <!-- Area fill under Active line -->
+      <polygon points="${areaActivePoints}" fill="var(--accent)" opacity="0.08"/>
+
+      <!-- Resolved line -->
+      <polyline points="${resolvedPoints}" fill="none" stroke="var(--success)" stroke-width="2" opacity="0.7"/>
+
+      <!-- Active line -->
+      <polyline points="${activePoints}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Data dots -->
+      ${dotsHTML}
+    </svg>
+  </div>`;
+}
+
+// ===== TREND TOOLTIP =====
+function showTrendTooltip(event, month, active, resolved, newF, resolvedF) {
+  const tt = document.getElementById('trendTooltip');
+  if (!tt) return;
+  tt.innerHTML = `<strong>${month}</strong><br>Active: <strong style="color:var(--accent)">${active}</strong> (${newF >= 0 ? '+' : ''}${newF} new)<br>Resolved: <strong style="color:var(--success)">${resolved}</strong> (${resolvedF >= 0 ? '+' : ''}${resolvedF})`;
+  tt.classList.add('show');
+  const rect = event.target.getBoundingClientRect();
+  const parent = tt.parentElement.getBoundingClientRect();
+  let left = rect.left - parent.left + 16;
+  let top = rect.top - parent.top - 60;
+  if (left + 180 > parent.width) left = rect.left - parent.left - 180;
+  if (top < 0) top = rect.top - parent.top + 16;
+  tt.style.left = left + 'px';
+  tt.style.top = top + 'px';
+}
+
+function hideTrendTooltip() {
+  const tt = document.getElementById('trendTooltip');
+  if (tt) tt.classList.remove('show');
+}
+
+// ===== EXECUTIVE HELPER: Risk Summary =====
+function generateRiskSummary(total, critCount, kevCount, teams, remediationRate, eolCount, distinctCVEs) {
+  const teamCount = teams.length;
+  const topTeam = teams[0];
+  const topKevTeam = [...teams].sort((a,b) => (b.kev||0) - (a.kev||0))[0];
+  const critKEV = kevCount; // active KEV exploited
+
+  let summary = `<strong>${total} active findings</strong> across <strong>${teamCount} teams</strong>. `;
+
+  if (topTeam) {
+    const teamCrits = topTeam.critical || 0;
+    const teamKEVs = topTeam.kev || 0;
+    const critDesc = teamCrits > 0 ? ` including <strong style="color:var(--critical)">${teamCrits} critical</strong>` : '';
+    const kevDesc = teamKEVs > 0 ? `<strong style="color:var(--danger)">${teamKEVs} KEV-exploited</strong>` : '';
+    summary += `${topTeam.name} carries the highest risk with <strong>${topTeam.total} findings</strong>${critDesc}${kevDesc ? ', ' + kevDesc : ''}. `;
+  }
+
+  if (eolCount > 0) {
+    summary += `<strong style="color:var(--danger)">${eolCount} EOL systems</strong> require immediate attention. `;
+  }
+
+  if (kevCount > 0) {
+    const critKEVCount = kevCount;
+    summary += `<strong style="color:var(--danger)">${critKEVCount} KEV-exploited CVEs</strong> are active in the environment. `;
+  }
+
+  summary += `Overall remediation rate is <strong>${remediationRate}%</strong>`;
+
+  // Add rate assessment
+  if (remediationRate >= 70) summary += ' — trending positively.';
+  else if (remediationRate >= 45) summary += ' — moderate progress.';
+  else summary += ' — <strong style="color:var(--warning)">needs improvement</strong>.';
+
+  summary += ` ${distinctCVEs} distinct CVEs across ${teamCount} engineering teams.`;
+
+  // Recommendations
+  summary += `<br><br><strong style="color:var(--accent)">Recommendations:</strong> `;
+  const recs = [];
+  if (kevCount > 0) recs.push(`prioritize remediation of ${kevCount} KEV-exploited vulnerabilities per CISA BOD 22-01`);
+  if (eolCount > 0) recs.push(`accelerate migration of ${eolCount} EOL systems`);
+  if (remediationRate < 60) recs.push(`improve remediation velocity through automated patch deployment`);
+  if (recs.length === 0) recs.push('continue current remediation cadence');
+  summary += recs.join('; ') + '.';
+
+  return summary;
+}
+
+// ===== EXECUTIVE HELPER: Filter by Team =====
+function execFilterByTeam(teamSlug) {
+  navigateTo('dashboard');
+  // Apply team filter by hostname pattern
+  const patterns = {
+    'endpoint': { hw: ['MAC-','LAP-','WKS-','VDI-','DESK-'] },
+    'factory': { hw: ['MFG-','PLC-','SCADA-','HMI-','OPS-','FLOOR-'] },
+    'networking': { hw: ['CSW-','RTR-','FW-','VPN-','LB-','WLC-','AP-'] },
+    'servers': { hw: ['DC-','WEB-','APP-','DB-','SQL-','EXCH-','SRV-','K8S-','JENKINS-','VCENTER-','BKUP-','NPS-','PRINT-','SIEM-'] },
+  };
+  const pattern = patterns[teamSlug];
+  if (pattern) {
+    setTimeout(() => {
+      // Filter only shows findings for that team's hostname pattern
+      const tbody = document.querySelector('#page-dashboard .card:last-of-type tbody');
+      if (!tbody) return;
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const asset = cells[2]?.textContent?.trim() || cells[1]?.textContent?.trim() || '';
+        const hn = asset.toUpperCase();
+        const matches = pattern.hw.some(p => hn.startsWith(p));
+        // Also check via assignTeam
+        if (!matches) {
+          const team = assignTeam(asset, '', '', []);
+          if (teamSlug === 'servers' && team === 'Servers') row.style.display = '';
+          else if (teamSlug === 'endpoint' && team === 'Endpoint') row.style.display = '';
+          else if (teamSlug === 'factory' && team === 'Factory') row.style.display = '';
+          else if (teamSlug === 'networking' && team === 'Networking') row.style.display = '';
+          else row.style.display = 'none';
+        } else {
+          row.style.display = '';
+        }
+      });
+      showToast(`Filtered to ${teamSlug.charAt(0).toUpperCase() + teamSlug.slice(1)} team findings`);
+    }, 100);
+  }
+}
+
+// ===== EXECUTIVE REPORT EXPORT =====
+function exportExecutiveReport() {
+  const allFindings = getActiveFindings();
+  const active = allFindings.filter(f => f.state === 'Active');
+  const critical = active.filter(f => f.severity === 'Critical');
+  const kev = active.filter(f => f.kev);
+  const distinct = [...new Set(active.map(f => f.cve))];
+  const totalAssets = [...new Set(active.map(f => f.asset))];
+
+  // Build team stats
+  const teamData = {};
+  for (const key of ['Endpoint','Factory','Networking','Servers']) {
+    teamData[key] = { total:0, critical:0, kev:0, assets: new Set() };
+  }
+  active.forEach(f => {
+    const team = f.team || assignTeam(f.asset, f.assetOS || '', f.ou || '', f.serverRoles || []);
+    const t = teamData[team] || teamData['Servers'];
+    t.total++;
+    if (f.severity === 'Critical') t.critical++;
+    if (f.kev) t.kev++;
+    t.assets.add(f.asset);
+  });
+
+  const topCVEs = Object.entries(
+    active.reduce((acc, f) => { acc[f.cve] = (acc[f.cve] || new Set()); acc[f.cve].add(f.asset); return acc; }, {})
+  ).map(([cve, assets]) => ({ cve, count: assets.size, info: CVES[cve] }))
+   .sort((a,b) => b.count - a.count).slice(0, 5);
+
+  const now = new Date().toISOString().slice(0,10);
+  let report = `========================================\n`;
+  report += `SHIELDVIEW EXECUTIVE REPORT\n`;
+  report += `Generated: ${now}\n`;
+  report += `========================================\n\n`;
+  report += `OVERVIEW\n`;
+  report += `--------\n`;
+  report += `Total Active Findings: ${active.length}\n`;
+  report += `Distinct CVEs:         ${distinct.length}\n`;
+  report += `Affected Assets:       ${totalAssets.length}\n`;
+  report += `Critical Severity:     ${critical.length}\n`;
+  report += `KEV Exploited:         ${kev.length}\n`;
+  const remRate = allFindings.length > 0 ? Math.round(((allFindings.filter(x => x.state === 'Fixed' || x.state === 'Actioned').length) / allFindings.length) * 100) : 0;
+  report += `Remediation Rate:      ${remRate}%\n\n`;
+
+  report += `TEAM BREAKDOWN\n`;
+  report += `--------------\n`;
+  for (const [name, d] of Object.entries(teamData)) {
+    if (d.total === 0) continue;
+    report += `${name}: ${d.total} findings, ${d.critical} critical, ${d.kev} KEV, ${d.assets.size} assets\n`;
+  }
+  report += `\n`;
+
+  report += `TOP CVEs\n`;
+  report += `--------\n`;
+  topCVEs.forEach((c, i) => {
+    const sev = (c.info && c.info.severity) || 'Medium';
+    const title = (c.info && c.info.title) || c.cve;
+    report += `${i+1}. ${c.cve} [${sev}] — ${title}\n   ${c.count} assets affected\n`;
+  });
+
+  report += `\n========================================\n`;
+  report += `Report exported from ShieldView v4\n`;
+
+  // Copy and download
+  navigator.clipboard.writeText(report).then(() => {
+    showToast('✓ Executive report copied to clipboard!');
+  }).catch(() => {});
+
+  const blob = new Blob([report], {type: 'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `shieldview-executive-report-${now}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ===== RENDER TEAM DETAIL =====
@@ -3718,8 +4283,8 @@ renderFindingsTable();
 populateFilterDropdowns();
 updateServerRolesSection();
 updateEOLSummary();
-console.log('ShieldView v3 ready — EOL detection, CVE/Plugin views, asset enrichment');
-console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user filters, EOL tracking');
+console.log('ShieldView v4 ready — Executive page: team assignment, trend chart, risk score, exec export');
+console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user/EOL filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 
 // Cross-tool bridge — show pending count in sidebar
