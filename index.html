@@ -1700,7 +1700,7 @@ select.input { cursor: pointer; }
 <script>
 // ════ Contract Version Check ─────────────────────────────────
 (function(){
-  var CV = 'security-tools:contract-version';
+  var CV = KEYS.CONTRACT_VERSION;
   var VER = '1.0.0';
   try {
     var stored = localStorage.getItem(CV);
@@ -1716,12 +1716,15 @@ select.input { cursor: pointer; }
 })();
 
 // ════ Error Catcher ──────────────────────────────────────────
-(function(){'use strict';const SK='security-tools:error-log',MX=200,TN=document.title||location.pathname.split('/').filter(Boolean).pop()||'Unknown';function gl(){try{return JSON.parse(localStorage.getItem(SK)||'[]')}catch(e){return[]}}function sl(l){try{while(l.length>MX)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e){try{while(l.length>50)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e2){}}}function ae(e){e.tool=TN;e.url=location.href;e.timestamp=new Date().toISOString();e.userAgent=navigator.userAgent;const l=gl();l.push(e);sl(l)}
+(function(){'use strict';const SK=KEYS.ERROR_LOG,MX=200,TN=document.title||location.pathname.split('/').filter(Boolean).pop()||'Unknown';function gl(){try{return JSON.parse(localStorage.getItem(SK)||'[]')}catch(e){return[]}}function sl(l){try{while(l.length>MX)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e){try{while(l.length>50)l.shift();localStorage.setItem(SK,JSON.stringify(l))}catch(e2){}}}function ae(e){e.tool=TN;e.url=location.href;e.timestamp=new Date().toISOString();e.userAgent=navigator.userAgent;const l=gl();l.push(e);sl(l)}
 window.onerror=function(m,s,l,c,err){ae({type:'runtime-error',message:String(m),source:s||'',line:l||0,col:c||0,stack:err&&err.stack?String(err.stack).slice(0,2000):''});return false};
 window.addEventListener('unhandledrejection',function(e){const r=e.reason;ae({type:'unhandled-rejection',message:String(r),stack:r&&r.stack?String(r.stack).slice(0,2000):''})});
 var oce=console.error;console.error=function(){try{var a=Array.prototype.slice.call(arguments);ae({type:'console-error',message:a.map(function(x){try{return typeof x==='object'?JSON.stringify(x,null,2).slice(0,500):String(x)}catch(e){return String(x)}}).join(' ').slice(0,2000),args:a.length})}catch(e){}return oce.apply(console,arguments)};
 window.__debugLog=function(m,d){ae({type:'manual',message:String(m),data:d?JSON.stringify(d).slice(0,1000):''})};
 console.log('['+TN+'] Error catcher active ✓');})();
+
+// ════ localStorage Keys ──────────────────────────────────────
+const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue'};
 
 // ════ API Configuration ───────────────────────────────────────
 const API_MODE = "api"; // "demo" (fake data) | "api" (live backend)
@@ -1875,7 +1878,7 @@ let kevFetchInProgress = false;
 
 function loadKEVFromStorage() {
   try {
-    const raw = localStorage.getItem('security-tools:kev-catalog');
+    const raw = localStorage.getItem(KEYS.KEV_CATALOG);
     if (raw) {
       const data = JSON.parse(raw);
       if (data && data.catalog && data.timestamp) {
@@ -1892,7 +1895,7 @@ function loadKEVFromStorage() {
 function saveKEVToStorage(catalog) {
   try {
     const data = { catalog, timestamp: new Date().toISOString() };
-    localStorage.setItem('security-tools:kev-catalog', JSON.stringify(data));
+    localStorage.setItem(KEYS.KEV_CATALOG, JSON.stringify(data));
     kevCatalog = catalog;
     kevLastFetched = data.timestamp;
   } catch(e) { console.warn('Failed to save KEV to localStorage:', e); }
@@ -2721,9 +2724,9 @@ let viewMode = 'cve'; // 'cve' or 'plugin'
 
 function loadImportedData() {
   try {
-    const f = localStorage.getItem('security-tools:imported-findings');
+    const f = localStorage.getItem(KEYS.IMPORTED_FINDINGS);
     if (f) importedFindings = JSON.parse(f);
-    const a = localStorage.getItem('security-tools:imported-assets');
+    const a = localStorage.getItem(KEYS.IMPORTED_ASSETS);
     if (a) importedAssets = JSON.parse(a);
   } catch(e) {
     importedFindings = null;
@@ -2745,7 +2748,7 @@ let snipeitConfig = null;
 
 function loadSnipeITConfig() {
   try {
-    const c = localStorage.getItem('security-tools:snipeit-config');
+    const c = localStorage.getItem(KEYS.SNIPEIT_CONFIG);
     if (c) snipeitConfig = JSON.parse(c);
   } catch(e) { snipeitConfig = null; }
 }
@@ -2754,13 +2757,13 @@ function saveSnipeITConfig() {
   const url = (document.getElementById('snipeitUrl')?.value || '').replace(/\/+$/, '');
   const key = document.getElementById('snipeitKey')?.value || '';
   snipeitConfig = { url, key };
-  try { localStorage.setItem('security-tools:snipeit-config', JSON.stringify(snipeitConfig)); } catch(e) {}
+  try { localStorage.setItem(KEYS.SNIPEIT_CONFIG, JSON.stringify(snipeitConfig)); } catch(e) {}
 }
 
 function loadSnipeITData() {
   loadSnipeITConfig();
   try {
-    const a = localStorage.getItem('security-tools:snipeit-assets');
+    const a = localStorage.getItem(KEYS.SNIPEIT_ASSETS);
     if (a) snipeitAssets = JSON.parse(a);
   } catch(e) { snipeitAssets = null; }
 }
@@ -2831,8 +2834,8 @@ async function fetchSnipeITAssets() {
       hasMore = rows.length === limit;
     }
     snipeitAssets = allAssets;
-    try { localStorage.setItem('security-tools:snipeit-assets', JSON.stringify(snipeitAssets)); } catch(e) {}
-    try { localStorage.setItem('security-tools:snipeit-assets-meta', JSON.stringify({count: snipeitAssets.length, timestamp: new Date().toISOString()})); } catch(e) {}
+    try { localStorage.setItem(KEYS.SNIPEIT_ASSETS, JSON.stringify(snipeitAssets)); } catch(e) {}
+    try { localStorage.setItem(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({count: snipeitAssets.length, timestamp: new Date().toISOString()})); } catch(e) {}
 
     // Build summary
     const statusBreakdown = {};
@@ -2868,9 +2871,9 @@ async function fetchSnipeITAssets() {
 function clearSnipeIT() {
   snipeitAssets = null;
   snipeitConfig = null;
-  localStorage.removeItem('security-tools:snipeit-assets');
-  localStorage.removeItem('security-tools:snipeit-assets-meta');
-  localStorage.removeItem('security-tools:snipeit-config');
+  localStorage.removeItem(KEYS.SNIPEIT_ASSETS);
+  localStorage.removeItem(KEYS.SNIPEIT_ASSETS_META);
+  localStorage.removeItem(KEYS.SNIPEIT_CONFIG);
   document.getElementById('snipeitUrl').value = '';
   document.getElementById('snipeitKey').value = '';
   document.getElementById('snipeitStatus').innerHTML = '';
@@ -2919,8 +2922,8 @@ function loadDemoSnipeIT() {
   snipeitAssets = assets;
   snipeitConfig = { url: '(demo)', mode: 'demo', lastFetch: new Date().toISOString() };
   saveSnipeitConfig();
-  localStorage.setItem('security-tools:snipeit-assets', JSON.stringify({ rows: assets, total: assets.length }));
-  localStorage.setItem('security-tools:snipeit-assets-meta', JSON.stringify({ lastFetch: new Date().toISOString(), count: assets.length, status: 'demo' }));
+  localStorage.setItem(KEYS.SNIPEIT_ASSETS, JSON.stringify({ rows: assets, total: assets.length }));
+  localStorage.setItem(KEYS.SNIPEIT_ASSETS_META, JSON.stringify({ lastFetch: new Date().toISOString(), count: assets.length, status: 'demo' }));
   const statusEl = document.getElementById('snipeitStatus');
   if (statusEl) statusEl.innerHTML = '<span class="success">✅ Demo data loaded — ' + assets.length + ' assets (simulated Snipe-IT inventory)</span>';
   document.getElementById('snipeitSummary').innerHTML = renderSnipeitSummary();
@@ -3074,8 +3077,8 @@ function handleFileSelect(event, type) {
     if (type === 'tenable') {
       const findings = parseTenableCSV(rows);
       importedFindings = findings;
-      try { localStorage.setItem('security-tools:imported-findings', JSON.stringify(findings)); } catch(e) {}
-      try { localStorage.setItem('security-tools:imported-findings-meta', JSON.stringify({fileName: file.name, count: findings.length, timestamp: new Date().toISOString()})); } catch(e) {}
+      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(findings)); } catch(e) {}
+      try { localStorage.setItem(KEYS.IMPORTED_FINDINGS_META, JSON.stringify({fileName: file.name, count: findings.length, timestamp: new Date().toISOString()})); } catch(e) {}
       if (importedAssets) {
         enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
       }
@@ -3084,8 +3087,8 @@ function handleFileSelect(event, type) {
     } else if (type === 'sccm') {
       const assets = parseSCCMCSV(rows);
       importedAssets = assets;
-      try { localStorage.setItem('security-tools:imported-assets', JSON.stringify(assets)); } catch(e) {}
-      try { localStorage.setItem('security-tools:imported-assets-meta', JSON.stringify({fileName: file.name, count: assets.length, timestamp: new Date().toISOString()})); } catch(e) {}
+      try { localStorage.setItem(KEYS.IMPORTED_ASSETS, JSON.stringify(assets)); } catch(e) {}
+      try { localStorage.setItem(KEYS.IMPORTED_ASSETS_META, JSON.stringify({fileName: file.name, count: assets.length, timestamp: new Date().toISOString()})); } catch(e) {}
       if (importedFindings) {
         enrichedFindings = joinFindingsWithAssets(importedFindings, importedAssets);
       }
@@ -3123,14 +3126,14 @@ function clearImport(type) {
   if (type === 'tenable') {
     importedFindings = null;
     enrichedFindings = null;
-    localStorage.removeItem('security-tools:imported-findings');
-    localStorage.removeItem('security-tools:imported-findings-meta');
+    localStorage.removeItem(KEYS.IMPORTED_FINDINGS);
+    localStorage.removeItem(KEYS.IMPORTED_FINDINGS_META);
     document.getElementById('statusTenable').innerHTML = '';
   } else {
     importedAssets = null;
     enrichedFindings = null;
-    localStorage.removeItem('security-tools:imported-assets');
-    localStorage.removeItem('security-tools:imported-assets-meta');
+    localStorage.removeItem(KEYS.IMPORTED_ASSETS);
+    localStorage.removeItem(KEYS.IMPORTED_ASSETS_META);
     document.getElementById('statusSCCM').innerHTML = '';
   }
   updateImportSummary();
@@ -3152,7 +3155,7 @@ function updateImportSummary() {
 
   let html = '';
   if (hasFindings) {
-    const metaF = JSON.parse(localStorage.getItem('security-tools:imported-findings-meta') || '{}');
+    const metaF = JSON.parse(localStorage.getItem(KEYS.IMPORTED_FINDINGS_META) || '{}');
     html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:20px">📄</span>
       <div><strong>${importedFindings.length.toLocaleString()}</strong> vulnerability findings imported
@@ -3160,7 +3163,7 @@ function updateImportSummary() {
     </div>`;
   }
   if (hasAssets) {
-    const metaA = JSON.parse(localStorage.getItem('security-tools:imported-assets-meta') || '{}');
+    const metaA = JSON.parse(localStorage.getItem(KEYS.IMPORTED_ASSETS_META) || '{}');
     html += `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:20px">💻</span>
       <div><strong>${importedAssets.length.toLocaleString()}</strong> device assets imported
@@ -3219,11 +3222,11 @@ function renderSetupPage() {
   updateImportSummary();
   // Restore status displays
   if (importedFindings) {
-    const metaF = JSON.parse(localStorage.getItem('security-tools:imported-findings-meta') || '{}');
+    const metaF = JSON.parse(localStorage.getItem(KEYS.IMPORTED_FINDINGS_META) || '{}');
     updateImportStatus('tenable', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
   }
   if (importedAssets) {
-    const metaA = JSON.parse(localStorage.getItem('security-tools:imported-assets-meta') || '{}');
+    const metaA = JSON.parse(localStorage.getItem(KEYS.IMPORTED_ASSETS_META) || '{}');
     updateImportStatus('sccm', metaA.fileName || 'devices.csv', importedAssets.length, 'ok');
   }
   // Restore Snipe-IT config
@@ -4986,7 +4989,7 @@ function renderPipelineBar() {
   const text = document.getElementById('pipelineBarText');
   const ts = document.getElementById('pipelineBarTs');
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     if (queue.length === 0) {
       bar.style.display = 'none';
       barEmpty.style.display = 'flex';
@@ -5010,11 +5013,11 @@ function renderPipelineBar() {
 
 function resendAllFindings() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     if (queue.length === 0) { showToast('Nothing to resend'); return; }
     // Mark all as pending and update timestamp
     queue.forEach(item => { item.status = 'pending'; item.timestamp = new Date().toISOString(); });
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
     renderPipelineBar();
     showToast('✓ Re-sent ' + queue.length + ' findings to RemFlow queue');
   } catch(e) {
@@ -5025,7 +5028,7 @@ function resendAllFindings() {
 // ===== PIPELINE PAGE =====
 function renderPipelinePage() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     const totalSent = queue.length;
 
     // ShieldView status — always "source" (it's the start of pipeline)
@@ -5108,12 +5111,12 @@ function sendToRemFlow(cveId, title, severity) {
   const tf = allFindings.find(f => f.cve === cveId && f.solution);
   const item = {cve: cveId, title: title, severity: severity, from: 'ShieldView', timestamp: new Date().toISOString(), status: 'pending', solution: tf?.solution || '', description: tf?.description || '', synopsis: tf?.synopsis || ''};
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     if (!queue.some(i => i.cve === cveId)) {
       queue.push(item);
     }
-    localStorage.setItem('security-tools:remediation-queue', JSON.stringify(queue));
-    localStorage.setItem('security-tools:last-remediation', JSON.stringify(item));
+    localStorage.setItem(KEYS.REMEDIATION_QUEUE, JSON.stringify(queue));
+    localStorage.setItem(KEYS.LAST_REMEDIATION, JSON.stringify(item));
     renderPipelineBar();
     showToast('✓ Sent to RemFlow — open it to start remediation');
   } catch(e) {
@@ -5270,7 +5273,7 @@ console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 // Cross-tool bridge — show pending count in sidebar
 (function showPendingCount() {
   try {
-    const queue = JSON.parse(localStorage.getItem('security-tools:remediation-queue') || '[]');
+    const queue = JSON.parse(localStorage.getItem(KEYS.REMEDIATION_QUEUE) || '[]');
     const pending = queue.filter(i => i.status === 'pending').length;
     const existing = document.getElementById('cross-tool-badge');
     if (existing) existing.remove();
