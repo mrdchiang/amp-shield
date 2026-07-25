@@ -238,6 +238,19 @@ td { font-size: 13px; }
 .badge-low { background: var(--low-bg); color: var(--low); }
 .badge-info { background: var(--info-bg); color: var(--info); }
 .badge-neutral { background: var(--bg-hover); color: var(--text-secondary); }
+.badge-eol { background: var(--critical-bg); color: var(--critical); }
+.badge-approaching { background: var(--high-bg); color: var(--high); }
+.badge-supported { background: var(--low-bg); color: var(--low); }
+
+/* EOL summary card styles */
+.eol-summary { display: flex; gap: 16px; flex-wrap: wrap; }
+.eol-stat { flex: 1; min-width: 120px; background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 14px; text-align: center; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
+.eol-stat:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.eol-stat .eol-count { font-size: 28px; font-weight: 700; }
+.eol-stat .eol-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.eol-stat.eol-critical { border-left: 3px solid var(--critical); }
+.eol-stat.eol-approaching { border-left: 3px solid var(--high); }
+.eol-stat.eol-supported { border-left: 3px solid var(--low); }
 
 /* Cards */
 .card {
@@ -809,6 +822,30 @@ select.input { cursor: pointer; }
           <div id="serverRolesContent" style="display:flex;gap:8px;flex-wrap:wrap"></div>
         </div>
 
+        <!-- EOL Summary Card -->
+        <div class="card" id="eolSummaryCard" style="margin-top:16px">
+          <div class="card-title" style="margin-bottom:12px">🪦 End of Life Risk — OS & Software</div>
+          <div class="eol-summary" id="eolSummaryContent">
+            <div class="eol-stat eol-critical" onclick="dashFilter('eol','eol')">
+              <div class="eol-count" style="color:var(--critical)" id="eolCountEOL">0</div>
+              <div class="eol-label">🪦 EOL Now</div>
+            </div>
+            <div class="eol-stat eol-approaching" onclick="dashFilter('eol','approaching')">
+              <div class="eol-count" style="color:var(--high)" id="eolCountApproaching">0</div>
+              <div class="eol-label">⏳ Approaching (≤180d)</div>
+            </div>
+            <div class="eol-stat eol-supported" onclick="dashFilter('eol','supported')">
+              <div class="eol-count" style="color:var(--low)" id="eolCountSupported">0</div>
+              <div class="eol-label">✅ Supported</div>
+            </div>
+            <div class="eol-stat" style="border-left:3px solid var(--text-muted)" onclick="dashFilter('eol','unknown')">
+              <div class="eol-count" style="color:var(--text-muted)" id="eolCountUnknown">0</div>
+              <div class="eol-label">❓ Unknown OS</div>
+            </div>
+          </div>
+          <div id="eolDetailList" style="margin-top:12px;font-size:12px;color:var(--text-secondary);max-height:200px;overflow-y:auto"></div>
+        </div>
+
         <!-- Executive Compliance Score -->
         <div class="card" id="complianceScoreCard" style="margin-top:16px">
           <div class="card-header"><h3>📊 Security Posture Overview</h3></div>
@@ -899,17 +936,18 @@ select.input { cursor: pointer; }
           <input class="input" placeholder="Search asset name, IP..." style="width:240px">
           <select class="input"><option>All Sites</option><option>US-East</option><option>US-West</option><option>EU-Central</option></select>
           <select class="input"><option>All OS</option><option>Windows Server 2022</option><option>Ubuntu 22.04</option><option>RHEL 9</option></select>
+          <select class="input" id="eolFilterAssets" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option value="All">All EOL Status</option><option value="eol">🪦 EOL</option><option value="approaching">⏳ Approaching</option><option value="supported">✅ Supported</option><option value="unknown">❓ Unknown</option></select>
           <button class="btn btn-sm btn-primary" style="margin-left:auto">🔄 Sync Assets</button>
         </div>
         <div class="card">
           <table>
-            <thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Owner</th><th>Active CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
+            <thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>EOL Status</th><th>Site</th><th>Owner</th><th>Active CVEs</th><th>Critical</th><th>High</th><th>Last Seen</th></tr></thead>
             <tbody>
-              <tr><td class="mono text-link">WEB-PROD-03</td><td class="mono">10.23.4.17</td><td>Ubuntu 22.04 LTS</td><td>US-East (nyc1)</td><td>Platform Engineering</td><td class="mono">47</td><td style="color:var(--critical)">3</td><td style="color:var(--high)">14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
-              <tr><td class="mono text-link">DC-PROD-01</td><td class="mono">10.23.1.4</td><td>Windows Server 2022</td><td>US-East (nyc1)</td><td>Infrastructure</td><td class="mono">32</td><td style="color:var(--critical)">5</td><td style="color:var(--high)">11</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
-              <tr><td class="mono text-link">DB-PROD-02</td><td class="mono">10.23.8.55</td><td>RHEL 9.3</td><td>EU-Central (fra1)</td><td>Database & Storage</td><td class="mono">28</td><td style="color:var(--critical)">2</td><td style="color:var(--high)">8</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
-              <tr><td class="mono text-link">EXCH-PROD-01</td><td class="mono">10.23.2.12</td><td>Windows Server 2022</td><td>US-West (sfo1)</td><td>Infrastructure</td><td class="mono">19</td><td style="color:var(--critical)">1</td><td style="color:var(--high)">6</td><td style="font-size:12px;color:var(--text-muted)">2026-06-26</td></tr>
-              <tr><td class="mono text-link">APP-PROD-07</td><td class="mono">10.23.5.88</td><td>Ubuntu 22.04 LTS</td><td>US-East (nyc1)</td><td>Application Services</td><td class="mono">41</td><td style="color:var(--critical)">4</td><td style="color:var(--high)">12</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">WEB-PROD-03</td><td class="mono">10.23.4.17</td><td>Ubuntu 22.04 LTS</td><td><span class="badge badge-supported">✅ Supported</span></td><td>US-East (nyc1)</td><td>Platform Engineering</td><td class="mono">47</td><td style="color:var(--critical)">3</td><td style="color:var(--high)">14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">DC-PROD-01</td><td class="mono">10.23.1.4</td><td>Windows Server 2022</td><td><span class="badge badge-supported">✅ Supported</span></td><td>US-East (nyc1)</td><td>Infrastructure</td><td class="mono">32</td><td style="color:var(--critical)">5</td><td style="color:var(--high)">11</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
+              <tr><td class="mono text-link">DB-PROD-02</td><td class="mono">10.23.8.55</td><td>RHEL 9.3</td><td><span class="badge badge-supported">✅ Supported</span></td><td>EU-Central (fra1)</td><td>Database & Storage</td><td class="mono">28</td><td style="color:var(--critical)">2</td><td style="color:var(--high)">8</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
+              <tr><td class="mono text-link">EXCH-PROD-01</td><td class="mono">10.23.2.12</td><td>Windows Server 2022</td><td><span class="badge badge-supported">✅ Supported</span></td><td>US-West (sfo1)</td><td>Infrastructure</td><td class="mono">19</td><td style="color:var(--critical)">1</td><td style="color:var(--high)">6</td><td style="font-size:12px;color:var(--text-muted)">2026-06-26</td></tr>
+              <tr><td class="mono text-link">APP-PROD-07</td><td class="mono">10.23.5.88</td><td>Ubuntu 22.04 LTS</td><td><span class="badge badge-supported">✅ Supported</span></td><td>US-East (nyc1)</td><td>Application Services</td><td class="mono">41</td><td style="color:var(--critical)">4</td><td style="color:var(--high)">12</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
             </tbody>
           </table>
         </div>
@@ -1273,6 +1311,10 @@ select.input { cursor: pointer; }
           <div class="card-title" style="margin-bottom:16px">Changelog</div>
           <div style="display:flex;flex-direction:column;gap:20px">
             <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-07-24 — v3.0.0</div>
+              <div style="font-size:13px">🪦 End of Life detection engine with comprehensive OS/software EOL database, fuzzy-matching, EOL summary card on Dashboard, EOL Status column/filter on Assets page, and per-asset EOL detail view.</div>
+            </div>
+            <div>
               <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">2026-06-25 — v2.4.0</div>
               <div style="font-size:13px">Added vendor/family classification view with ordered regex rules. Per-asset plugin name storage to fix last-write-wins bug across platforms.</div>
             </div>
@@ -1513,6 +1555,301 @@ const FINDINGS = [
   {cve:'CVE-2026-12345', check:'Log4j Fix Validated — Awaiting CAB Approval', asset:'K8S-PROD-01', port:'8443/tcp', severity:'Critical', state:'Actioned', kev:true, firstSeen:'2026-02-18'},
 ];
 FINDINGS.forEach((f,i) => { f.id = i; });
+
+// ===== EOL DATABASE — End of Life Tracking =====
+const EOL_DB = [
+  // --- Windows Client ---
+  { name: 'Windows 7', eolDate: '2020-01-14', category: 'os', patterns: ['windows 7'] },
+  { name: 'Windows 8', eolDate: '2016-01-12', category: 'os', patterns: ['windows 8', 'windows 8.0'] },
+  { name: 'Windows 8.1', eolDate: '2023-01-10', category: 'os', patterns: ['windows 8.1'] },
+  { name: 'Windows 10 (all)', eolDate: '2025-10-14', category: 'os', patterns: ['windows 10'] },
+  { name: 'Windows 10 21H2', eolDate: '2023-06-13', category: 'os', patterns: ['21h2'] },
+  { name: 'Windows 10 22H2', eolDate: '2025-10-14', category: 'os', patterns: ['22h2'] },
+  { name: 'Windows 11 21H2', eolDate: '2024-10-08', category: 'os', patterns: ['windows 11 21h2'] },
+  { name: 'Windows 11 22H2', eolDate: '2025-10-14', category: 'os', patterns: ['windows 11 22h2'] },
+  // --- Windows Server ---
+  { name: 'Windows Server 2008 / R2', eolDate: '2020-01-14', category: 'os', patterns: ['windows server 2008', 'server 2008 r2'] },
+  { name: 'Windows Server 2012 / R2', eolDate: '2023-10-10', category: 'os', patterns: ['windows server 2012', 'server 2012 r2'] },
+  { name: 'Windows Server 2016', eolDate: '2027-01-12', category: 'os', patterns: ['windows server 2016'] },
+  { name: 'Windows Server 2019', eolDate: '2029-01-09', category: 'os', patterns: ['windows server 2019'] },
+  { name: 'Windows Server 2022', eolDate: '2031-10-14', category: 'os', patterns: ['windows server 2022'] },
+  { name: 'Windows Server 2025', eolDate: '2034-10-10', category: 'os', patterns: ['windows server 2025'] },
+  // --- macOS ---
+  { name: 'macOS Mojave (10.14)', eolDate: '2020-09-24', category: 'os', patterns: ['mojave', 'macos 10.14', 'mac os 10.14'] },
+  { name: 'macOS Catalina (10.15)', eolDate: '2021-09-23', category: 'os', patterns: ['catalina', 'macos 10.15', 'mac os 10.15'] },
+  { name: 'macOS Big Sur (11)', eolDate: '2022-09-12', category: 'os', patterns: ['big sur', 'macos 11', 'mac os 11'] },
+  { name: 'macOS Monterey (12)', eolDate: '2023-09-21', category: 'os', patterns: ['monterey', 'macos 12', 'mac os 12'] },
+  { name: 'macOS Ventura (13)', eolDate: '2024-09-16', category: 'os', patterns: ['ventura', 'macos 13', 'mac os 13'] },
+  { name: 'macOS Sonoma (14)', eolDate: '2026-09-30', category: 'os', patterns: ['sonoma', 'macos 14', 'mac os 14'] },
+  { name: 'macOS Sequoia (15)', eolDate: '2027-09-30', category: 'os', patterns: ['sequoia', 'macos 15', 'mac os 15'] },
+  // --- Linux ---
+  { name: 'Ubuntu 16.04 LTS', eolDate: '2021-04-30', category: 'os', patterns: ['ubuntu 16.04', 'ubuntu 16'] },
+  { name: 'Ubuntu 18.04 LTS', eolDate: '2023-05-31', category: 'os', patterns: ['ubuntu 18.04', 'ubuntu 18'] },
+  { name: 'Ubuntu 20.04 LTS', eolDate: '2025-04-30', category: 'os', patterns: ['ubuntu 20.04', 'ubuntu 20'] },
+  { name: 'Ubuntu 22.04 LTS', eolDate: '2027-04-30', category: 'os', patterns: ['ubuntu 22.04', 'ubuntu 22'] },
+  { name: 'Ubuntu 24.04 LTS', eolDate: '2029-04-30', category: 'os', patterns: ['ubuntu 24.04', 'ubuntu 24'] },
+  { name: 'RHEL 6', eolDate: '2020-11-30', category: 'os', patterns: ['rhel 6', 'red hat enterprise linux 6'] },
+  { name: 'RHEL 7', eolDate: '2024-06-30', category: 'os', patterns: ['rhel 7', 'red hat enterprise linux 7'] },
+  { name: 'RHEL 8', eolDate: '2029-05-31', category: 'os', patterns: ['rhel 8', 'red hat enterprise linux 8'] },
+  { name: 'RHEL 9', eolDate: '2032-05-31', category: 'os', patterns: ['rhel 9', 'red hat enterprise linux 9'] },
+  { name: 'CentOS 7', eolDate: '2024-06-30', category: 'os', patterns: ['centos 7', 'centos linux 7'] },
+  { name: 'CentOS 8', eolDate: '2021-12-31', category: 'os', patterns: ['centos 8', 'centos linux 8', 'centos stream 8'] },
+  { name: 'Debian 10 (Buster)', eolDate: '2024-06-30', category: 'os', patterns: ['debian 10', 'debian buster'] },
+  { name: 'Debian 11 (Bullseye)', eolDate: '2026-08-15', category: 'os', patterns: ['debian 11', 'debian bullseye'] },
+  { name: 'Debian 12 (Bookworm)', eolDate: '2028-06-10', category: 'os', patterns: ['debian 12', 'debian bookworm'] },
+  { name: 'SUSE Linux Enterprise 12', eolDate: '2024-10-31', category: 'os', patterns: ['suse 12', 'sles 12'] },
+  { name: 'SUSE Linux Enterprise 15', eolDate: '2028-07-31', category: 'os', patterns: ['suse 15', 'sles 15'] },
+  // --- Common Software ---
+  { name: 'SQL Server 2012', eolDate: '2022-07-12', category: 'app', patterns: ['sql server 2012', 'mssql 2012'] },
+  { name: 'SQL Server 2014', eolDate: '2024-07-09', category: 'app', patterns: ['sql server 2014', 'mssql 2014'] },
+  { name: 'SQL Server 2016', eolDate: '2026-07-14', category: 'app', patterns: ['sql server 2016', 'mssql 2016'] },
+  { name: 'SQL Server 2017', eolDate: '2027-10-12', category: 'app', patterns: ['sql server 2017', 'mssql 2017'] },
+  { name: 'SQL Server 2019', eolDate: '2030-01-07', category: 'app', patterns: ['sql server 2019', 'mssql 2019'] },
+  { name: 'Exchange Server 2013', eolDate: '2023-04-11', category: 'app', patterns: ['exchange 2013', 'exchange server 2013'] },
+  { name: 'Exchange Server 2016', eolDate: '2025-10-14', category: 'app', patterns: ['exchange 2016', 'exchange server 2016'] },
+  { name: 'Exchange Server 2019', eolDate: '2025-10-14', category: 'app', patterns: ['exchange 2019', 'exchange server 2019'] },
+  { name: 'Office 2013', eolDate: '2023-04-11', category: 'app', patterns: ['office 2013'] },
+  { name: 'Office 2016', eolDate: '2025-10-14', category: 'app', patterns: ['office 2016'] },
+  { name: 'Office 2019', eolDate: '2025-10-14', category: 'app', patterns: ['office 2019'] },
+  { name: 'SharePoint Server 2016', eolDate: '2026-07-14', category: 'app', patterns: ['sharepoint 2016'] },
+  { name: 'SharePoint Server 2019', eolDate: '2026-07-14', category: 'app', patterns: ['sharepoint 2019'] },
+  { name: 'Apache HTTP Server 2.2', eolDate: '2018-01-01', category: 'app', patterns: ['apache http server 2.2', 'apache 2.2'] },
+  { name: 'Apache HTTP Server 2.4', eolDate: '2028-06-01', category: 'app', patterns: ['apache http server 2.4', 'apache 2.4'] },
+  { name: 'Apache Tomcat 8', eolDate: '2024-03-31', category: 'app', patterns: ['tomcat 8', 'apache tomcat 8'] },
+  { name: 'Apache Tomcat 9', eolDate: '2027-12-31', category: 'app', patterns: ['tomcat 9', 'apache tomcat 9'] },
+  { name: 'Node.js 16', eolDate: '2023-09-11', category: 'app', patterns: ['node.js 16', 'node 16'] },
+  { name: 'Node.js 18', eolDate: '2025-04-30', category: 'app', patterns: ['node.js 18', 'node 18'] },
+  { name: 'Node.js 20', eolDate: '2026-04-30', category: 'app', patterns: ['node.js 20', 'node 20'] },
+  { name: 'PHP 7.4', eolDate: '2022-11-28', category: 'app', patterns: ['php 7.4'] },
+  { name: 'PHP 8.0', eolDate: '2023-11-26', category: 'app', patterns: ['php 8.0'] },
+  { name: 'PHP 8.1', eolDate: '2025-11-25', category: 'app', patterns: ['php 8.1'] },
+  { name: 'Python 3.7', eolDate: '2023-06-27', category: 'app', patterns: ['python 3.7'] },
+  { name: 'Python 3.8', eolDate: '2024-10-07', category: 'app', patterns: ['python 3.8'] },
+  { name: 'Python 3.9', eolDate: '2025-10-05', category: 'app', patterns: ['python 3.9'] },
+  { name: 'PostgreSQL 11', eolDate: '2023-11-09', category: 'app', patterns: ['postgresql 11', 'postgres 11'] },
+  { name: 'PostgreSQL 12', eolDate: '2024-11-14', category: 'app', patterns: ['postgresql 12', 'postgres 12'] },
+  { name: 'PostgreSQL 13', eolDate: '2025-11-13', category: 'app', patterns: ['postgresql 13', 'postgres 13'] },
+  { name: 'PostgreSQL 14', eolDate: '2026-11-12', category: 'app', patterns: ['postgresql 14', 'postgres 14'] },
+  { name: 'MySQL 5.7', eolDate: '2023-10-21', category: 'app', patterns: ['mysql 5.7'] },
+  { name: 'MySQL 8.0', eolDate: '2026-04-30', category: 'app', patterns: ['mysql 8.0'] },
+  { name: 'nginx 1.22', eolDate: '2025-06-25', category: 'app', patterns: ['nginx 1.22'] },
+  { name: 'nginx 1.24', eolDate: '2026-05-25', category: 'app', patterns: ['nginx 1.24'] },
+  { name: 'Redis 6.2', eolDate: '2025-08-31', category: 'app', patterns: ['redis 6.2'] },
+  { name: 'Redis 7.0', eolDate: '2027-04-28', category: 'app', patterns: ['redis 7.0'] },
+  { name: 'Docker Engine 20.10', eolDate: '2023-12-10', category: 'app', patterns: ['docker 20.10'] },
+  { name: 'Docker Engine 23.0', eolDate: '2025-03-20', category: 'app', patterns: ['docker 23'] },
+  { name: 'Kubernetes 1.25', eolDate: '2023-10-27', category: 'app', patterns: ['kubernetes 1.25', 'k8s 1.25'] },
+  { name: 'Kubernetes 1.26', eolDate: '2024-02-28', category: 'app', patterns: ['kubernetes 1.26', 'k8s 1.26'] },
+  { name: 'Kubernetes 1.27', eolDate: '2024-06-28', category: 'app', patterns: ['kubernetes 1.27', 'k8s 1.27'] },
+  { name: 'Kubernetes 1.28', eolDate: '2024-10-28', category: 'app', patterns: ['kubernetes 1.28', 'k8s 1.28'] },
+  { name: 'VMware ESXi 6.7', eolDate: '2022-10-15', category: 'app', patterns: ['esxi 6.7', 'vmware esxi 6.7'] },
+  { name: 'VMware ESXi 7.0', eolDate: '2025-04-02', category: 'app', patterns: ['esxi 7.0', 'vmware esxi 7.0'] },
+  { name: 'VMware ESXi 8.0', eolDate: '2027-10-11', category: 'app', patterns: ['esxi 8.0', 'vmware esxi 8.0'] },
+  { name: 'vCenter Server 7.0', eolDate: '2025-04-02', category: 'app', patterns: ['vcenter 7', 'vcenter server 7'] },
+  { name: 'vCenter Server 8.0', eolDate: '2027-10-11', category: 'app', patterns: ['vcenter 8', 'vcenter server 8'] },
+  { name: 'Cisco IOS 15', eolDate: '2022-11-15', category: 'app', patterns: ['ios 15.'] },
+  { name: 'Cisco IOS XE 17.3', eolDate: '2022-10-31', category: 'app', patterns: ['ios xe 17.3'] },
+  { name: 'Cisco IOS XE 17.6', eolDate: '2024-01-31', category: 'app', patterns: ['ios xe 17.6'] },
+  { name: 'Cisco IOS XE 17.9', eolDate: '2025-07-31', category: 'app', patterns: ['ios xe 17.9'] },
+  { name: 'PAN-OS 9.1', eolDate: '2023-12-01', category: 'app', patterns: ['pan-os 9.1', 'panos 9.1'] },
+  { name: 'PAN-OS 10.0', eolDate: '2024-08-01', category: 'app', patterns: ['pan-os 10.0', 'panos 10.0'] },
+  { name: 'PAN-OS 10.1', eolDate: '2025-12-01', category: 'app', patterns: ['pan-os 10.1', 'panos 10.1'] },
+  { name: 'PAN-OS 10.2', eolDate: '2026-08-01', category: 'app', patterns: ['pan-os 10.2', 'panos 10.2'] },
+  { name: 'Java 8 (LTS)', eolDate: '2030-12-31', category: 'app', patterns: ['java 8', 'jdk 8', 'jre 8'] },
+  { name: 'Java 11 (LTS)', eolDate: '2027-09-30', category: 'app', patterns: ['java 11', 'jdk 11', 'jre 11'] },
+  { name: 'Java 17 (LTS)', eolDate: '2029-09-30', category: 'app', patterns: ['java 17', 'jdk 17', 'jre 17'] },
+  { name: '.NET Framework 4.5.2', eolDate: '2022-04-26', category: 'app', patterns: ['.net framework 4.5.2', '.net 4.5.2'] },
+  { name: '.NET Framework 4.6.2', eolDate: '2027-01-12', category: 'app', patterns: ['.net framework 4.6', '.net 4.6'] },
+  { name: 'Oracle Database 12c', eolDate: '2022-07-31', category: 'app', patterns: ['oracle database 12', 'oracle 12c'] },
+  { name: 'Oracle Database 19c', eolDate: '2027-04-30', category: 'app', patterns: ['oracle database 19', 'oracle 19c'] },
+];
+
+// ===== EOL DETECTION ENGINE =====
+function detectEOL(asset) {
+  if (!asset) return [];
+  const results = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const osStr = (asset.os || '').toLowerCase();
+  const rolesStr = (asset.serverRoles || []).join(' ').toLowerCase();
+  const hostnameStr = (asset.hostname || asset.name || '').toLowerCase();
+
+  // Collect all searchable text
+  const searchText = [osStr, rolesStr, hostnameStr].filter(Boolean);
+
+  for (const entry of EOL_DB) {
+    let matched = false;
+    for (const pattern of entry.patterns) {
+      const pat = pattern.toLowerCase();
+      for (const text of searchText) {
+        if (text.includes(pat)) {
+          matched = true;
+          break;
+        }
+      }
+      if (matched) break;
+    }
+    if (!matched) continue;
+
+    const eolDate = new Date(entry.eolDate + 'T00:00:00Z');
+    const diffMs = eolDate.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const isEOL = daysRemaining <= 0;
+    const isApproaching = !isEOL && daysRemaining <= 180;
+    const status = isEOL ? 'eol' : (isApproaching ? 'approaching' : 'supported');
+
+    // Don't add duplicate entries for the same product
+    if (!results.some(r => r.product === entry.name)) {
+      results.push({
+        product: entry.name,
+        eolDate: entry.eolDate,
+        status: status,
+        daysRemaining: daysRemaining,
+        isEOL: isEOL,
+        category: entry.category,
+      });
+    }
+  }
+  return results;
+}
+
+function getEOLBadge(status) {
+  switch(status) {
+    case 'eol': return '<span class="badge badge-eol">🪦 EOL</span>';
+    case 'approaching': return '<span class="badge badge-approaching">⏳ Approaching</span>';
+    case 'supported': return '<span class="badge badge-supported">✅ Supported</span>';
+    default: return '<span class="badge badge-neutral">❓ Unknown</span>';
+  }
+}
+
+function getEOLStatusLabel(status) {
+  switch(status) {
+    case 'eol': return 'EOL';
+    case 'approaching': return 'Approaching';
+    case 'supported': return 'Supported';
+    default: return 'Unknown';
+  }
+}
+
+function getWorstEOLStatus(eolResults) {
+  if (!eolResults || eolResults.length === 0) return 'unknown';
+  if (eolResults.some(r => r.status === 'eol')) return 'eol';
+  if (eolResults.some(r => r.status === 'approaching')) return 'approaching';
+  return 'supported';
+}
+
+// Build asset EOL cache
+let eolCache = {};
+function buildEOLCache() {
+  eolCache = {};
+  // Build from all team assets
+  for (const [slug, t] of Object.entries(TEAMS)) {
+    t.assets_list.forEach(a => {
+      const key = a.name;
+      if (!eolCache[key]) {
+        const assetObj = { os: a.os, hostname: a.name, serverRoles: inferServerRoles(a.name, a.ou || '', '', a.os) };
+        eolCache[key] = detectEOL(assetObj);
+      }
+    });
+  }
+  // Also check imported assets
+  if (importedAssets) {
+    importedAssets.forEach(a => {
+      const key = a.hostname;
+      if (!eolCache[key]) {
+        eolCache[key] = detectEOL(a);
+      }
+    });
+  }
+}
+
+function getAssetEOL(name) {
+  if (!eolCache[name]) {
+    // Try to find in imported assets or team assets
+    const allAssets = [];
+    for (const [slug, t] of Object.entries(TEAMS)) {
+      t.assets_list.forEach(a => allAssets.push({os: a.os, hostname: a.name, name: a.name, serverRoles: inferServerRoles(a.name, a.ou || '', '', a.os)}));
+    }
+    if (importedAssets) allAssets.push(...importedAssets);
+    const found = allAssets.find(a => (a.hostname || a.name) === name);
+    eolCache[name] = found ? detectEOL(found) : [];
+  }
+  return eolCache[name];
+}
+
+// ===== UPDATE EOL SUMMARY (Dashboard) =====
+function updateEOLSummary() {
+  buildEOLCache();
+
+  let eolCount = 0, approachingCount = 0, supportedCount = 0, unknownCount = 0;
+  const eolDetails = [];
+  const processed = new Set();
+
+  for (const [slug, t] of Object.entries(TEAMS)) {
+    t.assets_list.forEach(a => {
+      if (processed.has(a.name)) return;
+      processed.add(a.name);
+      const eolResults = eolCache[a.name] || [];
+      const worst = getWorstEOLStatus(eolResults);
+      if (worst === 'eol') eolCount++;
+      else if (worst === 'approaching') approachingCount++;
+      else if (worst === 'supported') supportedCount++;
+      else unknownCount++;
+
+      if (eolResults.length > 0 && (worst === 'eol' || worst === 'approaching')) {
+        eolDetails.push({ asset: a.name, os: a.os, worst: worst, results: eolResults });
+      }
+    });
+  }
+
+  // Also process imported assets
+  if (importedAssets) {
+    importedAssets.forEach(a => {
+      if (processed.has(a.hostname)) return;
+      processed.add(a.hostname);
+      const eolResults = eolCache[a.hostname] || [];
+      const worst = getWorstEOLStatus(eolResults);
+      if (worst === 'eol') eolCount++;
+      else if (worst === 'approaching') approachingCount++;
+      else if (worst === 'supported') supportedCount++;
+      else unknownCount++;
+
+      if (eolResults.length > 0 && (worst === 'eol' || worst === 'approaching')) {
+        eolDetails.push({ asset: a.hostname, os: a.os, worst: worst, results: eolResults });
+      }
+    });
+  }
+
+  // Update counts
+  const elEOL = document.getElementById('eolCountEOL');
+  const elApp = document.getElementById('eolCountApproaching');
+  const elSup = document.getElementById('eolCountSupported');
+  const elUnk = document.getElementById('eolCountUnknown');
+  if (elEOL) elEOL.textContent = eolCount;
+  if (elApp) elApp.textContent = approachingCount;
+  if (elSup) elSup.textContent = supportedCount;
+  if (elUnk) elUnk.textContent = unknownCount;
+
+  // Update detail list
+  const detailEl = document.getElementById('eolDetailList');
+  if (detailEl) {
+    if (eolDetails.length === 0) {
+      detailEl.innerHTML = '<div style="padding:8px;color:var(--text-muted)">All systems are within their support lifecycle. 🎉</div>';
+    } else {
+      eolDetails.sort((a, b) => a.worst === 'eol' ? -1 : 1);
+      detailEl.innerHTML = eolDetails.map(d => {
+        const badge = d.worst === 'eol' ? '<span class="badge badge-eol">🪦 EOL</span>' : '<span class="badge badge-approaching">⏳ Approaching</span>';
+        const products = d.results.filter(r => r.status === 'eol' || r.status === 'approaching').map(r => `${r.product} (${r.eolDate})`).join(', ');
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+          <span style="font-weight:600;min-width:140px">${d.asset}</span>
+          <span style="font-size:11px;color:var(--text-muted);min-width:160px">${d.os}</span>
+          ${badge}
+          <span style="font-size:11px;color:var(--text-secondary)">${products}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+}
 
 // ===== CSV PARSER (vanilla JS, handles quoted fields with commas) =====
 function parseCSV(text) {
@@ -1839,9 +2176,11 @@ function handleFileSelect(event, type) {
       showToast(`✓ Imported ${assets.length} assets from ${file.name}`);
     }
     updateImportSummary();
+    buildEOLCache();
     updateDashboardStats();
     renderFindingsTable(dashFilters.search || '', dashFilters);
     updateServerRolesSection();
+    updateEOLSummary();
   };
   reader.readAsText(file);
 }
@@ -1876,9 +2215,11 @@ function clearImport(type) {
     document.getElementById('statusSCCM').innerHTML = '';
   }
   updateImportSummary();
+  buildEOLCache();
   updateDashboardStats();
   renderFindingsTable(dashFilters.search || '', dashFilters);
   updateServerRolesSection();
+  updateEOLSummary();
   showToast('Import cleared — using demo data');
 }
 
@@ -2072,6 +2413,7 @@ function navigateTo(page) {
   if (page === 'dashboard') {
     renderFindingsTable();
     updateDashboardStats();
+    updateEOLSummary();
   }
 }
 
@@ -2624,6 +2966,8 @@ function updateDashboardStats() {
 
   // Update server roles section
   updateServerRolesSection();
+  // Update EOL summary
+  updateEOLSummary();
   // Populate filter dropdowns
   populateFilterDropdowns();
 }
@@ -2698,6 +3042,11 @@ function renderFindingsTable(filter, opts) {
     if (opts.deviceUser && opts.deviceUser !== 'All') {
       const user = f.deviceUser || '';
       if (!user.toUpperCase().includes(opts.deviceUser.toUpperCase())) return false;
+    }
+    if (opts.eol && opts.eol !== 'All') {
+      const eolResults = getAssetEOL(f.asset);
+      const worst = getWorstEOLStatus(eolResults);
+      if (worst !== opts.eol) return false;
     }
     return true;
   });
@@ -2779,7 +3128,7 @@ function dashFilter(type, value) {
     dashFilters[type] = value;
   }
   // Update dropdowns to reflect state
-  ['severity','state','serverRole','ou','deviceUser'].forEach(t => {
+  ['severity','state','serverRole','ou','deviceUser','eol'].forEach(t => {
     const sel = document.querySelector(`#page-dashboard select[data-filter="${t}"]`);
     if (sel) sel.value = dashFilters[t] || 'All';
   });
@@ -2909,6 +3258,37 @@ function renderAssetDetail() {
       <div class="kpi-item"><div class="kpi-value">${assetData.cves}</div><div class="kpi-label">Total (incl. resolved)</div></div>
       <div class="kpi-item"><div class="kpi-value" style="color:var(--text-muted)">${assetData.seen}</div><div class="kpi-label">Last Seen</div></div>
     </div>
+    <!-- EOL Status Card -->
+    ${(() => {
+      const eolResults = getAssetEOL(selectedAsset);
+      if (!eolResults || eolResults.length === 0) return '';
+      const worstStatus = getWorstEOLStatus(eolResults);
+      const borderColor = worstStatus === 'eol' ? 'var(--critical)' : worstStatus === 'approaching' ? 'var(--high)' : 'var(--low)';
+      return `<div class="card" style="margin-bottom:16px;border-left:3px solid ${borderColor}">
+        <div class="card-title" style="margin-bottom:12px">🪦 End of Life Status</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${eolResults.map(r => {
+            let statusBadge, daysText;
+            if (r.status === 'eol') {
+              statusBadge = '<span class="badge badge-eol">🪦 EOL</span>';
+              daysText = `<span style="color:var(--critical)">${Math.abs(r.daysRemaining)} days past EOL</span>`;
+            } else if (r.status === 'approaching') {
+              statusBadge = '<span class="badge badge-approaching">⏳ Approaching</span>';
+              daysText = `<span style="color:var(--high)">${r.daysRemaining} days until EOL</span>`;
+            } else {
+              statusBadge = '<span class="badge badge-supported">✅ Supported</span>';
+              daysText = `<span style="color:var(--text-muted)">${r.daysRemaining} days remaining</span>`;
+            }
+            return `<div style="display:flex;align-items:center;gap:12px;padding:8px;background:var(--bg-elevated);border-radius:var(--radius-sm)">
+              <span style="font-weight:600;min-width:200px">${r.product}</span>
+              <span style="font-size:12px;color:var(--text-muted)">EOL: ${r.eolDate}</span>
+              ${statusBadge}
+              ${daysText}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    })()}
     <div class="card">
       <div class="card-header"><span class="card-title">Findings on ${assetData.name}</span></div>
       <table><thead><tr><th>CVE</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>State</th><th>Disposition</th><th>KEV</th><th>First Seen</th><th>★</th></tr></thead>
@@ -2937,7 +3317,9 @@ function renderAssetsPage() {
   for (const [slug, t] of Object.entries(TEAMS)) {
     t.assets_list.forEach(a => {
       const kevCount = getActiveFindings().filter(f => f.asset === a.name && f.kev && f.state === 'Active').length;
-      allAssets.push({...a, team: t.name, kev: kevCount});
+      const eolResults = getAssetEOL(a.name);
+      const eolStatus = getWorstEOLStatus(eolResults);
+      allAssets.push({...a, team: t.name, kev: kevCount, eolStatus: eolStatus, eolResults: eolResults});
     });
   }
   allAssets.sort((a,b) => b.cves - a.cves);
@@ -2948,12 +3330,16 @@ function renderAssetsPage() {
       <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option>All Sites</option><option>US-East</option><option>US-West</option><option>EU-Central</option></select>
       <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option>All OS</option><option>Windows Server 2022</option><option>Ubuntu 22.04 LTS</option><option>RHEL 9.3</option><option>PAN-OS</option><option>Dell EMC</option><option>macOS</option></select>
       <select class="input" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')" id="assetDispFilter"><option>All Dispositions</option>${[...new Set(allAssets.flatMap(a=>FINDINGS.filter(f=>f.asset===a.name&&f.state==='Active').map(f=>f.disposition)))].map(d=>`<option>${d}</option>`).join('')}</select>
+      <select class="input" id="eolFilterAssets2" onchange="filterGlobalAssets(document.getElementById('assetsSearch')?.value||'')"><option value="All">All EOL Status</option><option value="eol">🪦 EOL</option><option value="approaching">⏳ Approaching</option><option value="supported">✅ Supported</option><option value="unknown">❓ Unknown</option></select>
       <span style="font-size:13px;color:var(--text-secondary);margin-left:auto">${allAssets.length} assets across ${Object.keys(TEAMS).length} teams</span>
     </div>
     <div class="card">
-      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>Site</th><th>Team</th><th>CVEs</th><th>Critical</th><th>High</th><th>KEV</th><th>Last Seen</th></tr></thead>
+      <table><thead><tr><th>Asset</th><th>IP</th><th>OS</th><th>EOL Status</th><th>Site</th><th>Team</th><th>CVEs</th><th>Critical</th><th>High</th><th>KEV</th><th>Last Seen</th></tr></thead>
       <tbody id="globalAssetsBody">
-        ${allAssets.map(a => `<tr class="clickable" onclick="viewAsset('${a.name}')" data-site="${a.site}" data-os="${a.os}"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${a.site}</td><td>${a.team}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="color:var(--danger)">${a.kev > 0 ? '⚠ ' + a.kev : '—'}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`).join('')}
+        ${allAssets.map(a => {
+          const eolBadge = getEOLBadge(a.eolStatus);
+          return `<tr class="clickable" onclick="viewAsset('${a.name}')" data-site="${a.site}" data-os="${a.os}" data-eol="${a.eolStatus}"><td class="mono text-link">${a.name}</td><td class="mono">${a.ip}</td><td>${a.os}</td><td>${eolBadge}</td><td>${a.site}</td><td>${a.team}</td><td class="mono">${a.cves}</td><td style="color:var(--critical)">${a.crit}</td><td style="color:var(--high)">${a.high}</td><td style="color:var(--danger)">${a.kev > 0 ? '⚠ ' + a.kev : '—'}</td><td style="font-size:12px;color:var(--text-muted)">${a.seen}</td></tr>`;
+        }).join('')}
       </tbody></table>
     </div>`;
 }
@@ -2963,16 +3349,19 @@ function filterGlobalAssets(query) {
   const siteFilter = document.querySelector('#page-assets select:nth-of-type(1)')?.value || 'All Sites';
   const osFilter = document.querySelector('#page-assets select:nth-of-type(2)')?.value || 'All OS';
   const dispFilter = document.getElementById('assetDispFilter')?.value || 'All Dispositions';
+  const eolFilter = (document.getElementById('eolFilterAssets')?.value || document.getElementById('eolFilterAssets2')?.value || 'All');
   document.querySelectorAll('#globalAssetsBody tr').forEach(row => {
     const text = row.textContent.toLowerCase();
     const site = row.dataset.site || '';
     const os = row.dataset.os || '';
+    const eol = row.dataset.eol || 'unknown';
     const name = row.querySelector('td')?.textContent?.trim() || '';
     const matchSearch = !q || text.includes(q);
     const matchSite = siteFilter === 'All Sites' || site.includes(siteFilter);
     const matchOS = osFilter === 'All OS' || os.includes(osFilter);
     const matchDisp = dispFilter === 'All Dispositions' || getActiveFindings().some(f => f.asset === name && f.state === 'Active' && f.disposition === dispFilter);
-    row.style.display = matchSearch && matchSite && matchOS && matchDisp ? '' : 'none';
+    const matchEOL = eolFilter === 'All' || eol === eolFilter;
+    row.style.display = matchSearch && matchSite && matchOS && matchDisp && matchEOL ? '' : 'none';
   });
 }
 // ===== RENDER VENDOR PAGE — Drill-down donut =====
@@ -3323,12 +3712,14 @@ setTimeout(hookExportButtons, 1500);
 
 // ===== INIT =====
 loadImportedData();
+buildEOLCache();
 updateDashboardStats();
 renderFindingsTable();
 populateFilterDropdowns();
 updateServerRolesSection();
-console.log('ShieldView v2 ready — CSV import, CVE/Plugin views, asset enrichment');
-console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user filters');
+updateEOLSummary();
+console.log('ShieldView v3 ready — EOL detection, CVE/Plugin views, asset enrichment');
+console.log('Features: Tenable CSV, SCCM/PDQ CSV, view toggle, role/OU/user filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 
 // Cross-tool bridge — show pending count in sidebar
