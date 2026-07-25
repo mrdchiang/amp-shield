@@ -876,6 +876,11 @@ select.input { cursor: pointer; }
             <div class="stat-label">Unactioned CVEs</div>
             <div class="stat-sub">No triage status set</div>
           </div>
+          <div class="stat-card" style="border-left:3px solid var(--critical)" onclick="dashFilter('state','Overdue')">
+            <div class="stat-value" style="color:var(--critical)">—</div>
+            <div class="stat-label">⏰ Overdue</div>
+            <div class="stat-sub">past SLA deadline</div>
+          </div>
           <div class="stat-card" style="border-left:3px solid var(--info)" onclick="dashFilter('state','KEV')">
             <div class="stat-value" style="color:var(--info)">—</div>
             <div class="stat-label">KEV Exploited</div>
@@ -966,6 +971,7 @@ select.input { cursor: pointer; }
           <div class="filters">
             <input class="input" placeholder="Search CVE or asset..." style="width:240px" id="dashboardSearch">
             <select class="input" data-filter="severity" onchange="dashFilter('severity',this.value)"><option value="All">All Severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+            <select class="input" data-filter="state" onchange="dashFilter('state',this.value)" id="dashStateFilter"><option value="All">All States</option><option value="KEV">KEV Exploited</option><option value="Overdue">Overdue</option><option value="Aged">Aged > 90d</option><option value="Unactioned">Unactioned</option><option value="Verification Failed">Verification Failed</option></select>
             <select class="input" data-filter="serverRole" onchange="dashFilter('serverRole',this.value)" id="dashRoleFilter"><option value="All">All Server Roles</option></select>
             <select class="input" data-filter="ou" onchange="dashFilter('ou',this.value)" id="dashOUFilter"><option value="All">All OUs</option></select>
             <select class="input" data-filter="deviceUser" onchange="dashFilter('deviceUser',this.value)" id="dashUserFilter"><option value="All">All Device Users</option></select>
@@ -979,7 +985,7 @@ select.input { cursor: pointer; }
           </div>
           <table>
             <thead>
-              <tr><th>CVE</th><th>Check / Plugin</th><th>Asset</th><th>Port</th><th>Severity</th><th>State</th><th>KEV</th><th>First Seen</th><th>★</th></tr>
+              <tr><th>CVE</th><th>Check / Plugin</th><th>Asset</th><th>Port</th><th>Severity</th><th>State</th><th>KEV</th><th>Days to Due</th><th>First Seen</th><th>★</th></tr>
             </thead>
             <tbody>
               <tr class="clickable" onclick="navigateTo('cve-detail')">
@@ -1570,6 +1576,39 @@ select.input { cursor: pointer; }
             Set <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_ISSUER</code>, <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_CLIENT_ID</code>, <code class="mono" style="background:var(--bg-hover);padding:2px 6px;border-radius:3px">OIDC_CLIENT_SECRET</code> env vars to enable OIDC.
           </div>
         </div>
+
+        <!-- SLA Policy Configuration -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">⏰ SLA Due-Date Policy</div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Non-KEV vulnerability findings are assigned a severity-based due date measured from first detection (<code class="mono" style="background:var(--bg-hover);padding:1px 5px;border-radius:3px">firstSeen</code>). KEV-matched findings use the CISA BOD 22-01 federal deadline.</p>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+            <div style="text-align:center">
+              <label style="font-size:12px;font-weight:600;color:var(--critical);display:block;margin-bottom:6px">🔴 Critical</label>
+              <input class="input" type="number" id="slaCritical" min="1" max="365" style="width:100%;text-align:center" placeholder="15">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px">days</div>
+            </div>
+            <div style="text-align:center">
+              <label style="font-size:12px;font-weight:600;color:var(--high);display:block;margin-bottom:6px">🟠 High</label>
+              <input class="input" type="number" id="slaHigh" min="1" max="365" style="width:100%;text-align:center" placeholder="30">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px">days</div>
+            </div>
+            <div style="text-align:center">
+              <label style="font-size:12px;font-weight:600;color:var(--medium);display:block;margin-bottom:6px">🟡 Medium</label>
+              <input class="input" type="number" id="slaMedium" min="1" max="365" style="width:100%;text-align:center" placeholder="90">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px">days</div>
+            </div>
+            <div style="text-align:center">
+              <label style="font-size:12px;font-weight:600;color:var(--low);display:block;margin-bottom:6px">🟢 Low</label>
+              <input class="input" type="number" id="slaLow" min="1" max="365" style="width:100%;text-align:center" placeholder="180">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px">days</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="btn btn-sm btn-primary" onclick="saveSLAPolicyFromUI()">💾 Save Policy</button>
+            <button class="btn btn-sm" onclick="resetSLAPolicyFromUI()">↻ Reset to Defaults</button>
+          </div>
+          <div id="slaPolicyStatus" style="font-size:12px;color:var(--success);display:none"></div>
+        </div>
       </div>
 
       <!-- ========== CHANGELOG ========== -->
@@ -1729,7 +1768,7 @@ window.__debugLog=function(m,d){ae({type:'manual',message:String(m),data:d?JSON.
 console.log('['+TN+'] Error catcher active ✓');})();
 
 // ════ localStorage Keys ──────────────────────────────────────
-const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue'};
+const KEYS={ERROR_LOG:'security-tools:error-log',IMPORTED_FINDINGS:'security-tools:imported-findings',IMPORTED_FINDINGS_META:'security-tools:imported-findings-meta',IMPORTED_ASSETS:'security-tools:imported-assets',IMPORTED_ASSETS_META:'security-tools:imported-assets-meta',SNIPEIT_ASSETS:'security-tools:snipeit-assets',SNIPEIT_ASSETS_META:'security-tools:snipeit-assets-meta',SNIPEIT_CONFIG:'security-tools:snipeit-config',KEV_CATALOG:'security-tools:kev-catalog',CONTRACT_VERSION:'security-tools:contract-version',REMEDIATION_QUEUE:'security-tools:remediation-queue',LAST_REMEDIATION:'security-tools:last-remediation',VALIDATED_REMEDIATIONS:'security-tools:validated-remediations',VERIFIED_QUEUE:'security-tools:verified-queue',LAUNCHPAD_QUEUE:'security-tools:launchpad-queue',SLA_POLICY:'security-tools:sla-policy'};
 
 // ════ API Configuration ───────────────────────────────────────
 const API_MODE = "api"; // "demo" (fake data) | "api" (live backend)
@@ -1998,6 +2037,8 @@ function updateFindingKEVFlags() {
       f.kev = isKEVExploited(f.cve);
     });
   }
+  // Recompute due dates since KEV status may have changed
+  enrichDueDates(allFindings);
 }
 
 function refreshKEVUI() {
@@ -2083,6 +2124,123 @@ function renderKEVDetailBadge(cveId) {
     </div>`;
   }
   return html;
+}
+
+// ════ SLA / Due-Date Engine ──────────────────────────────────
+// Default SLA policy (days from firstSeen per severity)
+const SLA_DEFAULTS = { critical: 15, high: 30, medium: 90, low: 180 };
+
+function getSLAPolicy() {
+  try {
+    const stored = localStorage.getItem(KEYS.SLA_POLICY);
+    if (stored) {
+      const p = JSON.parse(stored);
+      return {
+        critical: Number(p.critical) || SLA_DEFAULTS.critical,
+        high: Number(p.high) || SLA_DEFAULTS.high,
+        medium: Number(p.medium) || SLA_DEFAULTS.medium,
+        low: Number(p.low) || SLA_DEFAULTS.low
+      };
+    }
+  } catch(e) {}
+  return { ...SLA_DEFAULTS };
+}
+
+function saveSLAPolicy(policy) {
+  try { localStorage.setItem(KEYS.SLA_POLICY, JSON.stringify(policy)); } catch(e) {}
+}
+
+function resetSLAPolicy() {
+  saveSLAPolicy(SLA_DEFAULTS);
+  return { ...SLA_DEFAULTS };
+}
+
+// Compute the due date for a finding
+function computeDueDate(finding) {
+  // KEV findings: use CISA BOD 22-01 deadline from KEV catalog
+  if (finding.kev) {
+    const kevEntry = getKEVEntry(finding.cve);
+    if (kevEntry && kevEntry.dueDate) return kevEntry.dueDate; // YYYY-MM-DD from CISA
+  }
+  // Non-KEV: derive from severity policy based on firstSeen
+  const policy = getSLAPolicy();
+  const daysMap = { Critical: policy.critical, High: policy.high, Medium: policy.medium, Low: policy.low };
+  const days = daysMap[finding.severity] || 90;
+  if (!finding.firstSeen) return null;
+  // Add days to firstSeen date
+  const d = new Date(finding.firstSeen + 'T00:00:00Z');
+  if (isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+// Days to due: positive = not yet due, negative = overdue
+function daysToDue(finding) {
+  if (!finding.dueDate) return null;
+  const due = new Date(finding.dueDate + 'T00:00:00Z');
+  if (isNaN(due.getTime())) return null;
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const diffMs = due.getTime() - today.getTime();
+  return Math.round(diffMs / 86400000);
+}
+
+function isOverdue(finding) {
+  const d = daysToDue(finding);
+  return d !== null && d < 0;
+}
+
+// Enrich all findings with dueDate (call on data load)
+function enrichDueDates(findings) {
+  findings.forEach(f => {
+    if (!f.dueDate) f.dueDate = computeDueDate(f);
+  });
+}
+
+// ===== SLA Policy UI Management =====
+function initSLAPolicyUI() {
+  const policy = getSLAPolicy();
+  const criticalEl = document.getElementById('slaCritical');
+  const highEl = document.getElementById('slaHigh');
+  const mediumEl = document.getElementById('slaMedium');
+  const lowEl = document.getElementById('slaLow');
+  if (criticalEl) criticalEl.value = policy.critical;
+  if (highEl) highEl.value = policy.high;
+  if (mediumEl) mediumEl.value = policy.medium;
+  if (lowEl) lowEl.value = policy.low;
+}
+
+function saveSLAPolicyFromUI() {
+  const policy = {
+    critical: Number(document.getElementById('slaCritical')?.value) || SLA_DEFAULTS.critical,
+    high: Number(document.getElementById('slaHigh')?.value) || SLA_DEFAULTS.high,
+    medium: Number(document.getElementById('slaMedium')?.value) || SLA_DEFAULTS.medium,
+    low: Number(document.getElementById('slaLow')?.value) || SLA_DEFAULTS.low
+  };
+  saveSLAPolicy(policy);
+  // Show status
+  const statusEl = document.getElementById('slaPolicyStatus');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ SLA policy saved — due dates will update on next refresh'; }
+  setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+  // Recompte due dates and refresh
+  const allFindings = getActiveFindings();
+  allFindings.forEach(f => { if (!f.kev) f.dueDate = computeDueDate(f); });
+  updateDashboardStats();
+  renderFindingsTable(dashFilters.search || '', dashFilters);
+  showToast('SLA policy updated');
+}
+
+function resetSLAPolicyFromUI() {
+  const defaults = resetSLAPolicy();
+  initSLAPolicyUI();
+  const statusEl = document.getElementById('slaPolicyStatus');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✓ Reset to defaults: Critical=' + defaults.critical + 'd, High=' + defaults.high + 'd, Medium=' + defaults.medium + 'd, Low=' + defaults.low + 'd'; }
+  setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+  const allFindings = getActiveFindings();
+  allFindings.forEach(f => { if (!f.kev) f.dueDate = computeDueDate(f); });
+  updateDashboardStats();
+  renderFindingsTable(dashFilters.search || '', dashFilters);
+  showToast('SLA policy reset to defaults');
 }
 
 function renderKEVFeedCard() {
@@ -3364,6 +3522,7 @@ function navigateTo(page) {
   if (page === 'recently-fixed') renderRecentlyFixed();
   if (page === 'setup') { renderSetupPage(); renderKEVFeedCard(); }
   if (page === 'pipeline') renderPipelinePage();
+  if (page === 'admin') initSLAPolicyUI();
   if (page === 'dashboard') {
     renderFindingsTable();
     updateDashboardStats();
@@ -4246,6 +4405,8 @@ function toggleAuditTrail(rowId) {
 // ===== UPDATE DASHBOARD STATS FROM REAL DATA =====
 function updateDashboardStats() {
   const allFindings = getActiveFindings();
+  // Ensure due dates are computed
+  enrichDueDates(allFindings);
   const active = allFindings.filter(f => f.state === 'Active');
   const critical = active.filter(f => f.severity === 'Critical');
   const high = active.filter(f => f.severity === 'High');
@@ -4257,9 +4418,12 @@ function updateDashboardStats() {
   const unactioned = active.length;
   const kevCount = kev.length;
   const verifyFailed = active.filter(f => f.lastVerificationFailedAt);
+  // SLA overdue
+  const overdue = active.filter(f => isOverdue(f));
+  const worstOverdue = overdue.length > 0 ? Math.max(...overdue.map(f => daysToDue(f) || 0)) : 0;
 
   const cards = document.querySelectorAll('#page-dashboard .stat-card .stat-value');
-  if (cards.length >= 9) {
+  if (cards.length >= 10) {
     cards[0].textContent = active.length.toLocaleString();
     cards[1].textContent = critical.length;
     cards[2].textContent = high.length;
@@ -4269,14 +4433,16 @@ function updateDashboardStats() {
     cards[6].textContent = unactioned;
     cards[7].textContent = kevCount;
     cards[8].textContent = verifyFailed.length;
+    cards[9].textContent = overdue.length;
   }
   const subs = document.querySelectorAll('#page-dashboard .stat-card .stat-sub');
-  if (subs.length >= 9) {
+  if (subs.length >= 10) {
     subs[0].textContent = `${distinct.length} distinct CVEs`;
     subs[1].textContent = `${kev.filter(f=>f.severity==='Critical').length} exploited (KEV)`;
     subs[2].textContent = `${kev.filter(f=>f.severity==='High').length} exploited (KEV)`;
     subs[7].textContent = `${kevCount} active findings`;
     subs[8].textContent = `${verifyFailed.length} findings failed verification`;
+    subs[9].textContent = overdue.length > 0 ? `${overdue.length} overdue · worst: ${Math.abs(worstOverdue)} days` : 'All within SLA';
   }
 
   // Update donut center total
@@ -4329,13 +4495,32 @@ function updateDashboardStats() {
   // Overall score = average of all four
   const overallScore = Math.round((patchPct + remediationPct + kevPct + resolutionPct) / 4);
 
-  // Letter grade
+  // ── Letter grade ──────────────────────────────────────────
+  // Formula: score → A/B/C/D/F, then SLA penalty applies:
+  //   - If >10% of active findings are overdue → dock 1 grade
+  //   - If >25% of active findings are overdue → dock 2 grades
+  //   - Overdue = past its severity-based SLA dueDate (or CISA KEV deadline)
+  const overdueActive = active.filter(f => isOverdue(f));
+  const slaOverduePct = active.length > 0 ? (overdueActive.length / active.length) * 100 : 0;
+  let slaDock = 0;
+  if (slaOverduePct > 25) slaDock = 2;
+  else if (slaOverduePct > 10) slaDock = 1;
+
+  const grades = ['A','B','C','D','F'];
   let letterScore, grade;
   if (overallScore >= 90) { grade = 'A'; letterScore = 'Excellent'; }
   else if (overallScore >= 80) { grade = 'B'; letterScore = 'Good'; }
   else if (overallScore >= 70) { grade = 'C'; letterScore = 'Fair'; }
   else if (overallScore >= 60) { grade = 'D'; letterScore = 'Poor'; }
   else { grade = 'F'; letterScore = 'Critical'; }
+
+  // Apply SLA docking penalty
+  if (slaDock > 0) {
+    const idx = grades.indexOf(grade);
+    const newIdx = Math.min(idx + slaDock, grades.length - 1);
+    grade = grades[newIdx];
+    letterScore += ` (SLA dock ${slaDock})`;
+  }
 
   // Set score color
   const scoreColor = overallScore >= 80 ? 'var(--success)' : overallScore >= 60 ? 'var(--warning)' : 'var(--danger)';
@@ -4426,6 +4611,7 @@ function renderFindingsTable(filter, opts) {
       if (opts.state === 'KEV' && !f.kev) return false;
       if (opts.state === 'Aged' && f.firstSeen > '2026-03-28') return false;
       if (opts.state === 'Unactioned' && f.state !== 'Active') return false;
+      if (opts.state === 'Overdue' && !isOverdue(f)) return false;
       if (opts.state === 'Verification Failed' && (!f.lastVerificationFailedAt || f.state !== 'Active')) return false;
     }
     if (opts.serverRole && opts.serverRole !== 'All') {
@@ -4463,6 +4649,17 @@ function renderFindingsTable(filter, opts) {
 
     const entries = Object.values(groups).sort((a,b) => b.count - a.count);
 
+    function daysDueCell(finding) {
+      const d = daysToDue(finding);
+      if (d === null) return '<td style="color:var(--text-muted)">—</td>';
+      let color, bg;
+      if (d < 0) { color = 'var(--critical)'; bg = 'var(--critical-bg)'; }
+      else if (d <= 7) { color = 'var(--high)'; bg = 'var(--high-bg)'; }
+      else { color = 'var(--low)'; bg = 'var(--low-bg)'; }
+      const label = d < 0 ? `${Math.abs(d)}d overdue` : d === 0 ? 'Due today' : `${d}d left`;
+      return `<td style="color:${color};background:${bg};border-radius:4px;padding:2px 8px;font-weight:600;font-size:12px;display:inline-block;margin-top:2px">${label}</td>`;
+    }
+
     tbody.innerHTML = entries.slice(0, 200).map(g => `
       <tr class="clickable" onclick="viewCVE('${g.cve}')">
         <td class="mono text-link">${g.cve}</td>
@@ -4472,6 +4669,7 @@ function renderFindingsTable(filter, opts) {
         <td><span class="badge badge-${g.severity.toLowerCase()}">${g.severity}</span></td>
         <td><span class="badge badge-neutral">${g.count} findings</span></td>
         <td>${g.kev ? `<span style="color:var(--danger);cursor:help" title="${getKEVTooltip(g.cve)}">🛡️ KEV</span>` : ''}</td>
+        ${daysDueCell(g)}
         <td style="font-size:12px;color:var(--text-muted)">${g.firstSeen}</td>
         <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[g.cve]?'★':'☆'}</td>
       </tr>`).join('');
@@ -4480,14 +4678,26 @@ function renderFindingsTable(filter, opts) {
     const groups = {};
     filtered.forEach(f => {
       const key = f.check || f.cve;
-      if (!groups[key]) groups[key] = {check: key, cve: f.cve, severity: f.severity, count: 0, assets: new Set(), kev: f.kev, firstSeen: f.firstSeen};
+      if (!groups[key]) groups[key] = {check: key, cve: f.cve, severity: f.severity, count: 0, assets: new Set(), kev: f.kev, firstSeen: f.firstSeen, dueDate: f.dueDate};
       groups[key].count++;
       groups[key].assets.add(f.asset);
       if (f.kev) groups[key].kev = true;
       if (f.firstSeen < groups[key].firstSeen) groups[key].firstSeen = f.firstSeen;
+      if (f.dueDate && (!groups[key].dueDate || f.dueDate < groups[key].dueDate)) groups[key].dueDate = f.dueDate;
     });
 
     const entries = Object.values(groups).sort((a,b) => b.count - a.count);
+
+    function daysDueCell2(finding) {
+      const d = daysToDue(finding);
+      if (d === null) return '<td style="color:var(--text-muted)">—</td>';
+      let color, bg;
+      if (d < 0) { color = 'var(--critical)'; bg = 'var(--critical-bg)'; }
+      else if (d <= 7) { color = 'var(--high)'; bg = 'var(--high-bg)'; }
+      else { color = 'var(--low)'; bg = 'var(--low-bg)'; }
+      const label = d < 0 ? `${Math.abs(d)}d overdue` : d === 0 ? 'Due today' : `${d}d left`;
+      return `<td style="color:${color};background:${bg};border-radius:4px;padding:2px 8px;font-weight:600;font-size:12px;display:inline-block;margin-top:2px">${label}</td>`;
+    }
 
     tbody.innerHTML = entries.slice(0, 200).map(g => `
       <tr class="clickable" onclick="viewCVE('${g.cve}')">
@@ -4498,6 +4708,7 @@ function renderFindingsTable(filter, opts) {
         <td><span class="badge badge-${g.severity.toLowerCase()}">${g.severity}</span></td>
         <td><span class="badge badge-neutral">${g.count} findings</span></td>
         <td>${g.kev ? `<span style="color:var(--danger);cursor:help" title="${getKEVTooltip(g.cve)}">🛡️ KEV</span>` : ''}</td>
+        ${daysDueCell2(g)}
         <td style="font-size:12px;color:var(--text-muted)">${g.firstSeen}</td>
         <td onclick="event.stopPropagation();toggleWatchStar(this)" style="cursor:pointer">${watchState[g.cve]?'★':'☆'}</td>
       </tr>`).join('');
@@ -4594,20 +4805,24 @@ function updateStatHighlights() {
     const sel = document.querySelector(`#page-dashboard .stat-card${map[dashFilters.severity]||''}`);
     if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
   }
-  if (dashFilters.state === 'KEV') {
+  if (dashFilters.state === 'Unactioned') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(7)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'Overdue') {
     const sel = document.querySelector('#page-dashboard .stat-card:nth-child(8)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'KEV') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(9)');
     if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
   }
   if (dashFilters.state === 'Aged') {
     const sel = document.querySelector('#page-dashboard .stat-card:nth-child(6)');
     if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
   }
-  if (dashFilters.state === 'Unactioned') {
-    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(7)');
-    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
-  }
   if (dashFilters.state === 'Verification Failed') {
-    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(9)');
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(10)');
     if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
   }
 }
