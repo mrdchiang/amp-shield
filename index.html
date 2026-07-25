@@ -881,6 +881,11 @@ select.input { cursor: pointer; }
             <div class="stat-label">KEV Exploited</div>
             <div class="stat-sub">CISA Known Exploited</div>
           </div>
+          <div class="stat-card" style="border-left:3px solid var(--warning)" onclick="dashFilter('state','Verification Failed')">
+            <div class="stat-value" style="color:var(--warning)">—</div>
+            <div class="stat-label">Verification Failed</div>
+            <div class="stat-sub">RemFlow fix not confirmed</div>
+          </div>
         </div>
 
         <!-- Pipeline status bar -->
@@ -4191,9 +4196,14 @@ function renderCVEDetail(cveId) {
         </select>
       </div>
       <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>Disposition</th><th>First Seen</th><th>Last Observed</th><th></th></tr></thead>
-      <tbody id="cveActiveBody">${allFindings.filter(f=>f.cve===cveId&&f.state==='Active').map(f=>{
+      <tbody id="cveActiveBody">${allFindings.filter(f=>f.cve===cveId&&f.state==='Active').map((f,i)=>{
         const d = DISPOSITIONS[f.disposition] || DISPOSITIONS['Open'];
-        return `<tr data-disposition="${f.disposition}"><td class="mono text-link" style="cursor:pointer" onclick="viewAsset('${f.asset}')">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td><span class="badge" style="cursor:pointer;background:${d.color}20;color:${d.color};border:1px solid ${d.color}40" onclick="event.stopPropagation();toggleDispDropdown(this,'${f.cve}','${f.asset}')">${d.label} ▾</span></td><td style="font-size:12px;color:var(--text-muted)">${f.firstSeen}</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td><td><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showCRDraft('${f.cve} — ${f.asset}','${f.check.replace(/'/g,"&#39;")}','${f.severity}','${f.asset}')" style="font-size:11px;padding:2px 6px">📋</button></td></tr>`;
+        const trail = f.auditTrail && f.auditTrail.length > 0 ? f.auditTrail : null;
+        const fid = 'cveact-'+i;
+        const trailHTML = trail ? '<tr id="'+fid+'-trail" style="display:none;background:var(--bg-elevated)"><td colspan="8" style="padding:8px 14px"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">📋 Audit Trail ('+trail.length+' event'+(trail.length!==1?'s':'')+')</div>'+trail.map(t=>'<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid var(--border)"><span class="mono" style="font-size:10px;min-width:130px;color:var(--text-muted)">'+(t.timestamp||'').slice(0,16).replace('T',' ')+'</span><span style="font-size:11px;min-width:70px;color:var(--accent)">'+(t.source==='thevalidator'?'🗸 TheValidator':t.source==='manual'?'✎ Manual':t.source||'—')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(t.reason||'')+'</span><span style="font-size:10px;color:var(--text-muted);margin-left:auto">'+(t.fromState||'')+' → '+(t.toState||'')+'</span></div>').join('')+'</td></tr>' : '';
+        const expandBtn = trail ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();toggleAuditTrail(\''+fid+'\')" style="font-size:11px;padding:2px 6px" title="Toggle audit trail">📋</button>' : '';
+        const failWarn = f.lastVerificationFailedAt ? ' <span class="badge" style="background:var(--warning);color:#000;font-size:10px">⚠ Verify Failed</span>' : '';
+        return '<tr data-disposition="'+f.disposition+'" id="'+fid+'"><td class="mono text-link" style="cursor:pointer" onclick="viewAsset(\''+f.asset+'\')">'+f.asset+'</td><td>'+f.check+'</td><td class="mono">'+f.port+'</td><td><span class="badge badge-'+f.severity.toLowerCase()+'">'+f.severity+'</span></td><td><span class="badge" style="cursor:pointer;background:'+d.color+'20;color:'+d.color+';border:1px solid '+d.color+'40" onclick="event.stopPropagation();toggleDispDropdown(this,\''+f.cve+'\',\''+f.asset+'\')">'+d.label+' ▾</span>'+failWarn+'</td><td style="font-size:12px;color:var(--text-muted)">'+f.firstSeen+'</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td><td>'+expandBtn+'<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();showCRDraft(\''+f.cve+' — '+f.asset+'\',\''+f.check.replace(/'/g,\'&#39;\')+'\',\''+f.severity+'\',\''+f.asset+'\')" style="font-size:11px;padding:2px 6px">📄</button></td></tr>'+trailHTML;
       }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px">No active findings</td></tr>'}</tbody></table>
     </div>
     <div id="tab-cve-actioned" class="card" style="display:none">
@@ -4201,8 +4211,16 @@ function renderCVEDetail(cveId) {
       <tbody>${allFindings.filter(f=>f.cve===cveId&&f.state==='Actioned').map(f=>`<tr><td class="mono text-link">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td><span class="badge badge-info">In Progress</span></td><td>${f.asset.includes('DC')?'jsmith':f.asset.includes('MAC')?'agarcia':f.asset.includes('DB')?'tnguyen':f.asset.includes('APP')?'mwilson':'—'}</td><td style="font-size:12px;color:var(--text-secondary)">${f.check.includes('CAB')?'Awaiting CAB approval for change window':f.check.includes('Booked')?'Maintenance window: 2026-07-05 02:00 UTC':f.check.includes('Scheduled')?'MDM push staged for 2026-07-03':f.check.includes('Pending')?'Remediation verified in staging, prod rollout pending':'Fix in progress — ticket #SEC-${2000+Math.floor(Math.random()*500)}'}</td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No actioned findings</td></tr>'}</tbody></table>
     </div>
     <div id="tab-cve-resolved" class="card" style="display:none">
-      <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>Fixed At</th><th>Verified By</th></tr></thead>
-      <tbody>${allFindings.filter(f=>f.cve===cveId&&f.state==='Fixed').map(f=>`<tr><td class="mono text-link">${f.asset}</td><td>${f.check}</td><td class="mono">${f.port}</td><td><span class="badge badge-${f.severity.toLowerCase()}">${f.severity}</span></td><td style="font-size:12px;color:var(--success)">2026-06-${15+Math.floor(Math.random()*12)}</td><td style="font-size:12px;color:var(--text-muted)">${f.asset.includes('EXEC')?'agarcia':f.asset.includes('EXCH')?'jsmith':f.asset.includes('JAMF')?'agarcia':'va-scanner'}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No resolved findings</td></tr>'}</tbody></table>
+      <table><thead><tr><th>Asset</th><th>Check / Plugin</th><th>Port</th><th>Severity</th><th>Fixed At</th><th>Verified By</th><th></th></tr></thead>
+      <tbody>${allFindings.filter(f=>f.cve===cveId&&f.state==='Fixed').map((f,i)=>{
+        const fid2 = 'cveres-'+i;
+        const trail2 = f.auditTrail && f.auditTrail.length > 0 ? f.auditTrail : null;
+        const trailHTML2 = trail2 ? '<tr id="'+fid2+'-trail" style="display:none;background:var(--bg-elevated)"><td colspan="7" style="padding:8px 14px"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">📋 Audit Trail ('+trail2.length+' event'+(trail2.length!==1?'s':'')+')</div>'+trail2.map(t=>'<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid var(--border)"><span class="mono" style="font-size:10px;min-width:130px;color:var(--text-muted)">'+(t.timestamp||'').slice(0,16).replace('T',' ')+'</span><span style="font-size:11px;min-width:70px;color:var(--accent)">'+(t.source==='thevalidator'?'🗸 TheValidator':t.source==='manual'?'✎ Manual':t.source||'—')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(t.reason||'')+'</span><span style="font-size:10px;color:var(--text-muted);margin-left:auto">'+(t.fromState||'')+' → '+(t.toState||'')+'</span></div>').join('')+'</td></tr>' : '';
+        const expandBtn2 = trail2 ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();toggleAuditTrail(\''+fid2+'\')" style="font-size:11px;padding:2px 6px" title="Toggle audit trail">📋</button>' : '';
+        const fixedDate = f.fixedAt ? f.fixedAt.slice(0,10) : ('2026-06-'+(15+Math.floor(Math.random()*12)));
+        const verifiedBy = f.verifiedByTool || (f.asset.includes('EXEC')?'agarcia':f.asset.includes('EXCH')?'jsmith':f.asset.includes('JAMF')?'agarcia':'manual');
+        return '<tr id="'+fid2+'"><td class="mono text-link">'+f.asset+'</td><td>'+f.check+'</td><td class="mono">'+f.port+'</td><td><span class="badge badge-'+f.severity.toLowerCase()+'">'+f.severity+'</span></td><td style="font-size:12px;color:var(--success)">'+fixedDate+'</td><td style="font-size:12px;color:var(--text-muted)">'+verifiedBy+'</td><td>'+expandBtn2+'</td></tr>'+trailHTML2;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No resolved findings</td></tr>'}</tbody></table>
     </div>`;
 }
 
@@ -4215,6 +4233,14 @@ function toggleWatchStar(el) {
 
   watchState[cveId] = !watchState[cveId];
   el.textContent = watchState[cveId] ? '★' : '☆';
+}
+
+// ===== AUDIT TRAIL TOGGLE =====
+function toggleAuditTrail(rowId) {
+  const trailRow = document.getElementById(rowId + '-trail');
+  if (trailRow) {
+    trailRow.style.display = trailRow.style.display === 'none' ? '' : 'none';
+  }
 }
 
 // ===== UPDATE DASHBOARD STATS FROM REAL DATA =====
@@ -4230,9 +4256,10 @@ function updateDashboardStats() {
   const aged = active.filter(f => f.firstSeen < '2026-03-28');
   const unactioned = active.length;
   const kevCount = kev.length;
+  const verifyFailed = active.filter(f => f.lastVerificationFailedAt);
 
   const cards = document.querySelectorAll('#page-dashboard .stat-card .stat-value');
-  if (cards.length >= 8) {
+  if (cards.length >= 9) {
     cards[0].textContent = active.length.toLocaleString();
     cards[1].textContent = critical.length;
     cards[2].textContent = high.length;
@@ -4241,13 +4268,15 @@ function updateDashboardStats() {
     cards[5].textContent = aged.length;
     cards[6].textContent = unactioned;
     cards[7].textContent = kevCount;
+    cards[8].textContent = verifyFailed.length;
   }
   const subs = document.querySelectorAll('#page-dashboard .stat-card .stat-sub');
-  if (subs.length >= 8) {
+  if (subs.length >= 9) {
     subs[0].textContent = `${distinct.length} distinct CVEs`;
     subs[1].textContent = `${kev.filter(f=>f.severity==='Critical').length} exploited (KEV)`;
     subs[2].textContent = `${kev.filter(f=>f.severity==='High').length} exploited (KEV)`;
     subs[7].textContent = `${kevCount} active findings`;
+    subs[8].textContent = `${verifyFailed.length} findings failed verification`;
   }
 
   // Update donut center total
@@ -4397,6 +4426,7 @@ function renderFindingsTable(filter, opts) {
       if (opts.state === 'KEV' && !f.kev) return false;
       if (opts.state === 'Aged' && f.firstSeen > '2026-03-28') return false;
       if (opts.state === 'Unactioned' && f.state !== 'Active') return false;
+      if (opts.state === 'Verification Failed' && (!f.lastVerificationFailedAt || f.state !== 'Active')) return false;
     }
     if (opts.serverRole && opts.serverRole !== 'All') {
       const roles = f.serverRoles || [];
@@ -4574,6 +4604,10 @@ function updateStatHighlights() {
   }
   if (dashFilters.state === 'Unactioned') {
     const sel = document.querySelector('#page-dashboard .stat-card:nth-child(7)');
+    if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
+  }
+  if (dashFilters.state === 'Verification Failed') {
+    const sel = document.querySelector('#page-dashboard .stat-card:nth-child(9)');
     if (sel) { sel.style.opacity = '1'; sel.style.borderColor = 'var(--accent)'; }
   }
 }
@@ -5246,6 +5280,73 @@ setTimeout(hookExportButtons, 100);
 setTimeout(hookExportButtons, 500);
 setTimeout(hookExportButtons, 1500);
 
+// ===== VERIFIED QUEUE DRAIN =====
+function drainVerifiedQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem(KEYS.VERIFIED_QUEUE) || '[]');
+    if (!Array.isArray(queue) || queue.length === 0) return;
+    const findings = getActiveFindings();
+    if (!findings || findings.length === 0) { /* no data yet, keep queue */ return; }
+    let changed = false;
+    const now = new Date().toISOString();
+    const remaining = [];
+    queue.forEach(record => {
+      if (!record || !record.cve || !record.asset) { remaining.push(record); return; }
+      // Find matching finding by CVE + asset
+      const match = findings.find(f => f.cve === record.cve && f.asset === record.asset);
+      if (!match) { /* finding not in current data, keep in queue */ remaining.push(record); return; }
+      const isPass = record.result === 'pass';
+      if (isPass) {
+        // Transition to Fixed only if not already Fixed (idempotent)
+        if (match.state !== 'Fixed') {
+          match.state = 'Fixed';
+          match.verifiedAt = record.timestamp || now;
+          match.verifiedByTool = 'TheValidator';
+          match.fixedAt = record.timestamp || now;
+          if (!Array.isArray(match.auditTrail)) match.auditTrail = [];
+          match.auditTrail.push({
+            fromState: 'Active',
+            toState: 'Fixed',
+            reason: `Verified by TheValidator — deployment confirmed on ${match.asset}`,
+            source: 'thevalidator',
+            timestamp: record.timestamp || now
+          });
+          changed = true;
+        }
+      } else {
+        // Verification failed — leave Active, stamp failure
+        match.lastVerificationFailedAt = record.timestamp || now;
+        if (!Array.isArray(match.auditTrail)) match.auditTrail = [];
+        match.auditTrail.push({
+          fromState: match.state || 'Active',
+          toState: match.state || 'Active',
+          reason: `Verification FAILED — TheValidator could not confirm fix on ${match.asset}. Reason: ${record.reason || 'unknown'}`,
+          source: 'thevalidator',
+          timestamp: record.timestamp || now
+        });
+        changed = true;
+      }
+    });
+    // Clear the queue (items that had no matching finding stay in queue for later)
+    localStorage.setItem(KEYS.VERIFIED_QUEUE, JSON.stringify(remaining));
+    if (changed) {
+      // Persist the modified findings back to localStorage
+      if (importedFindings) {
+        try { localStorage.setItem(KEYS.IMPORTED_FINDINGS, JSON.stringify(importedFindings)); } catch(e) {}
+      }
+      updateDashboardStats();
+      renderFindingsTable(dashFilters.search || '', dashFilters);
+      renderPipelineBar();
+      console.log('ShieldView: drained verified queue — findings updated');
+    }
+    if (remaining.length > 0) {
+      console.log('ShieldView: ' + remaining.length + ' verification records kept in queue (no matching findings)');
+    }
+  } catch(e) {
+    console.warn('drainVerifiedQueue error:', e);
+  }
+}
+
 // ===== INIT =====
 loadImportedData();
 buildEOLCache();
@@ -5264,8 +5365,12 @@ populateFilterDropdowns();
 updateServerRolesSection();
 updateEOLSummary();
 renderPipelineBar();
+// Drain verified queue on load (after data is initialized)
+drainVerifiedQueue();
 // Kick off async KEV fetch (won't block UI)
 fetchKEVData(false);
+// Drain verified queue every 30 seconds
+setInterval(drainVerifiedQueue, 30000);
 console.log('ShieldView v7 ready — Snipe-IT API asset import, Live CISA KEV feed, executive page: team assignment, trend chart, risk score, exec export');
 console.log('Features: Tenable CSV, SCCM/PDQ CSV, Snipe-IT REST API, Live CISA KEV JSON, view toggle, role/OU/user/EOL/warranty filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
