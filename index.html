@@ -1190,7 +1190,7 @@ select.input { cursor: pointer; }
               <tr><td class="mono text-link">WEB-PROD-07</td><td>Apache Log4j Remote Code Execution</td><td class="mono">443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-02-14</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
               <tr><td class="mono text-link">APP-PROD-02</td><td>Log4j Detected (Windows Agent)</td><td class="mono">8080/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-medium">Risk Accepted</span></td><td>mwilson</td><td style="font-size:12px;color:var(--text-muted)">2026-03-01</td><td style="font-size:12px;color:var(--text-muted)">2026-06-27</td></tr>
               <tr><td class="mono text-link">APP-PROD-05</td><td>Apache Log4j (Linux RPM Check)</td><td class="mono">8080/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-03-15</td><td style="font-size:12px;color:var(--text-muted)">2026-06-28</td></tr>
-              <tr><td class="mono text-link">ADMIN-DEV-01</td><td>Log4j Vulnerability Scan (Nessus)</td><td class="mono">8443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-04-20</td><td style="font-size:12px;color:var(--text-muted)">2026-06-25</td></tr>
+              <tr><td class="mono text-link">ADMIN-DEV-01</td><td>Log4j Vulnerability Scan (Scanner)</td><td class="mono">8443/tcp</td><td><span class="badge badge-neutral">Active</span></td><td><span class="badge badge-high">Open</span></td><td>—</td><td style="font-size:12px;color:var(--text-muted)">2026-04-20</td><td style="font-size:12px;color:var(--text-muted)">2026-06-25</td></tr>
             </tbody>
           </table>
         </div>
@@ -1321,7 +1321,7 @@ select.input { cursor: pointer; }
           </div>
           <div class="team-card" onclick="viewTeam('endpoint')">
             <div class="team-name">Endpoint Engineering</div>
-            <div class="team-desc">Jamf Pro, macOS fleet, endpoint compliance, Zero Trust</div>
+            <div class="team-desc">macOS MDM, macOS fleet, endpoint compliance, Zero Trust</div>
             <div class="team-stats">
               <div class="team-stat"><div class="team-stat-val">218</div><div class="team-stat-label">Total</div></div>
               <div class="team-stat"><div class="team-stat-val" style="color:var(--critical)">8</div><div class="team-stat-label">Critical</div></div>
@@ -1475,19 +1475,19 @@ select.input { cursor: pointer; }
       <!-- ========== SETUP & IMPORTS ========== -->
       <div class="page" id="page-setup">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-          <!-- Tenable Import -->
+          <!-- Vulnerability Scanner Import -->
           <div class="card">
             <div class="card-header">
-              <span class="card-title">📄 Tenable Vulnerability Scan</span>
+              <span class="card-title">📄 Vulnerability Scanner Import</span>
               <span class="badge badge-info">CSV Import</span>
             </div>
-            <div class="drop-zone" id="dropTenable" onclick="document.getElementById('fileTenable').click()">
+            <div class="drop-zone" id="dropVulnerability Scanner" onclick="document.getElementById('fileVulnerability Scanner').click()">
               <div class="drop-icon">📥</div>
-              <div class="drop-text">Drop Tenable .csv export here</div>
+              <div class="drop-text">Drop Vulnerability Scanner .csv export here</div>
               <div class="drop-sub">or click to browse — .csv files only</div>
             </div>
-            <input type="file" accept=".csv" class="file-input-hidden" id="fileTenable" onchange="handleFileSelect(event,'tenable')">
-            <div id="statusTenable"></div>
+            <input type="file" accept=".csv" class="file-input-hidden" id="fileVulnerability Scanner" onchange="handleFileSelect(event,'vulnerability-scanner')">
+            <div id="statusVulnerability Scanner"></div>
           </div>
 
           <!-- SCCM/PDQ Import -->
@@ -1551,7 +1551,7 @@ select.input { cursor: pointer; }
           <div class="card-title" style="margin-bottom:12px">Sample CSV Formats</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">Tenable CSV columns:</div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px">Vulnerability Scanner CSV columns:</div>
               <code class="mono" style="font-size:10px;color:var(--text-muted);line-height:1.8">Plugin ID, CVE, CVSS, Risk, Host, Protocol, Port, Name, Synopsis, Description, Solution, See Also, Plugin Output</code>
             </div>
             <div>
@@ -1985,8 +1985,8 @@ const TEAMS = {
     {name:'PRINT-SRV-01',ip:'10.23.30.30',os:'Windows Server 2022',site:'US-East (nyc1)',cves:14,crit:1,high:4,seen:'2026-06-27'},
     {name:'FSLOGIX-01',ip:'10.23.30.40',os:'Windows Server 2022',site:'US-West (sfo1)',cves:9,crit:0,high:2,seen:'2026-06-28'},
   ]},
-  'endpoint': { name:'Endpoint Engineering', desc:'Jamf Pro, macOS fleet, endpoint compliance, Zero Trust', total:218, critical:8, high:47, medium:102, low:61, unactioned:34, aged:18, deltaTotal:5, deltaCrit:2, deltaHigh:3, deltaMed:0, deltaLow:0, deltaUnact:4, deltaAged:2, assets:320, tags:'function=endpoint, env=production', sites:'All', assets_list:[
-    {name:'JAMF-PROD-01',ip:'10.23.35.5',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',region:'Americas',city:'New York',bldg:'NYC1-DC1',floor:'4',ou:'americas.amp.com/NYC/Endpoint/MDM',cves:16,crit:0,high:4,seen:'2026-06-28'},
+  'endpoint': { name:'Endpoint Engineering', desc:'macOS MDM, macOS fleet, endpoint compliance, Zero Trust', total:218, critical:8, high:47, medium:102, low:61, unactioned:34, aged:18, deltaTotal:5, deltaCrit:2, deltaHigh:3, deltaMed:0, deltaLow:0, deltaUnact:4, deltaAged:2, assets:320, tags:'function=endpoint, env=production', sites:'All', assets_list:[
+    {name:'macOS MDM-PROD-01',ip:'10.23.35.5',os:'Ubuntu 22.04 LTS',site:'US-East (nyc1)',region:'Americas',city:'New York',bldg:'NYC1-DC1',floor:'4',ou:'americas.amp.com/NYC/Endpoint/MDM',cves:16,crit:0,high:4,seen:'2026-06-28'},
     {name:'MAC-ENG-14',ip:'10.23.35.114',os:'macOS Sequoia 15.3',site:'US-East (nyc1)',region:'Americas',city:'New York',bldg:'NYC1-DC1',floor:'5',ou:'americas.amp.com/NYC/Endpoint/Engineering',cves:8,crit:2,high:3,seen:'2026-06-28'},
     {name:'MAC-DESIGN-03',ip:'10.23.35.73',os:'macOS Sequoia 15.2.1',site:'US-West (sfo1)',region:'Americas',city:'Santa Clara',bldg:'SFO1-Core',floor:'3',ou:'americas.amp.com/SCL/Endpoint/Design',cves:7,crit:1,high:3,seen:'2026-06-27'},
     {name:'MAC-FIN-07',ip:'10.23.35.207',os:'macOS Sequoia 15.3',site:'US-East (nyc1)',region:'Americas',city:'New York',bldg:'NYC1-DC1',floor:'7',ou:'americas.amp.com/NYC/Endpoint/Finance',cves:6,crit:0,high:3,seen:'2026-06-28'},
@@ -2016,7 +2016,7 @@ const CVES = {
   'CVE-2026-41001': { title:'macOS Kernel Privilege Escalation (Sequoia)', severity:'High', cvss:'7.8', kev:false, ransomware:false, exploited:null, due:null, desc:'A memory corruption issue in the macOS kernel IOKit framework allows a malicious application to execute arbitrary code with kernel privileges. Affects macOS Sequoia 15.0–15.3.', fix:'Upgrade to macOS Sequoia 15.4 or later via System Settings > Software Update.', refs:['https://support.apple.com/en-us/HT214000'] },
   'CVE-2026-42002': { title:'Safari WebKit Remote Code Execution', severity:'Critical', cvss:'9.1', kev:true, ransomware:true, exploited:'2026-06-01', due:'2026-06-22', desc:'A use-after-free in Safari WebKit allows remote attackers to execute arbitrary code via a crafted web page. Exploited in the wild against financial sector targets.', fix:'Upgrade Safari to version 18.4+ bundled with macOS 15.4 or install standalone Safari Technology Preview 210.', refs:['https://support.apple.com/en-us/HT214001'] },
   'CVE-2026-43003': { title:'XProtect / Gatekeeper Bypass', severity:'Medium', cvss:'6.2', kev:false, ransomware:false, exploited:null, due:null, desc:'A logic flaw in macOS Gatekeeper allows notarized malicious applications to bypass XProtect malware scanning under specific bundle configurations.', fix:'Upgrade to macOS 15.4+. Enable "App Store and identified developers" in Privacy & Security settings.', refs:['https://support.apple.com/en-us/HT214002'] },
-  'CVE-2026-44004': { title:'Jamf Pro Privilege Escalation', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'An API authorization bypass in Jamf Pro 11.x allows standard users to escalate to administrator via crafted enrollment payloads.', fix:'Upgrade Jamf Pro to 11.12.1+. Rotate all Jamf Pro API credentials after upgrade.', refs:['https://learn.jamf.com/bundle/jamf-pro-release-notes/page/11_12_1.html'] },
+  'CVE-2026-44004': { title:'macOS MDM Privilege Escalation', severity:'High', cvss:'7.5', kev:false, ransomware:false, exploited:null, due:null, desc:'An API authorization bypass in macOS MDM 11.x allows standard users to escalate to administrator via crafted enrollment payloads.', fix:'Upgrade macOS MDM to 11.12.1+. Rotate all macOS MDM API credentials after upgrade.', refs:['https://learn.macOS MDM.com/bundle/macOS MDM-pro-release-notes/page/11_12_1.html'] },
   'CVE-2026-45005': { title:'Microsoft 365 for macOS App Sandbox Escape', severity:'High', cvss:'7.3', kev:false, ransomware:false, exploited:null, due:null, desc:'App sandbox escape in Microsoft 365 (Office) for macOS allows a malicious document to access files outside the sandbox container.', fix:'Update Microsoft 365 to version 16.88+ (Build 24061000) via Microsoft AutoUpdate.', refs:['https://learn.microsoft.com/en-us/officeupdates/update-history-microsoft-365-apps-for-mac'] },
 };
 
@@ -2415,7 +2415,7 @@ const FINDINGS = [
   {cve:'CVE-2026-12345', check:'Apache Log4j Remote Code Execution', asset:'WEB-PROD-03', port:'443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-14'},
   {cve:'CVE-2026-12345', check:'Log4j Detected (Windows Agent)', asset:'APP-PROD-02', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-03-01'},
   {cve:'CVE-2026-12345', check:'Apache Log4j (Linux RPM Check)', asset:'APP-PROD-05', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-03-15'},
-  {cve:'CVE-2026-12345', check:'Log4j Vulnerability Scan (Nessus)', asset:'ADMIN-DEV-01', port:'8443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-04-20'},
+  {cve:'CVE-2026-12345', check:'Log4j Vulnerability Scan (Scanner)', asset:'ADMIN-DEV-01', port:'8443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-04-20'},
   {cve:'CVE-2026-12345', check:'Apache Log4j JNDI Lookup (authenticated)', asset:'K8S-PROD-01', port:'8443/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-18'},
   {cve:'CVE-2026-12345', check:'Log4j CVE-2021-44228 Detection', asset:'JENKINS-01', port:'8080/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-02-20'},
   {cve:'CVE-2026-11223', check:'Windows Print Spooler Elevation', asset:'DC-PROD-01', port:'445/tcp', severity:'High', state:'Active', kev:true, firstSeen:'2026-01-08'},
@@ -2453,13 +2453,13 @@ const FINDINGS = [
   {cve:'CVE-2026-37002', check:'nginx QUIC Stream Handling', asset:'WEB-PROD-05', port:'443/udp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-06-17'},
   {cve:'CVE-2026-41001', check:'macOS Kernel IOKit Memory Corruption', asset:'MAC-ENG-14', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-05'},
   {cve:'CVE-2026-41001', check:'macOS Sequoia Kernel Vulnerability Scan', asset:'MAC-DESIGN-03', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-07'},
-  {cve:'CVE-2026-41001', check:'macOS IOKit Privilege Escalation (Nessus)', asset:'MAC-FIN-07', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-08'},
+  {cve:'CVE-2026-41001', check:'macOS IOKit Privilege Escalation (Scanner)', asset:'MAC-FIN-07', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-04-08'},
   {cve:'CVE-2026-42002', check:'Safari WebKit Use-After-Free RCE', asset:'MAC-ENG-14', port:'0/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-06-05'},
   {cve:'CVE-2026-42002', check:'Safari WebKit Vulnerability Detection', asset:'MAC-DESIGN-03', port:'0/tcp', severity:'Critical', state:'Active', kev:true, firstSeen:'2026-06-06'},
   {cve:'CVE-2026-42002', check:'WebKit RCE Scanner Check', asset:'MAC-EXEC-01', port:'0/tcp', severity:'Critical', state:'Fixed', kev:true, firstSeen:'2026-06-05'},
   {cve:'CVE-2026-43003', check:'XProtect Gatekeeper Bypass Detection', asset:'MAC-ENG-14', port:'0/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-05-10'},
   {cve:'CVE-2026-43003', check:'macOS Gatekeeper Configuration Audit', asset:'MAC-HR-02', port:'0/tcp', severity:'Medium', state:'Active', kev:false, firstSeen:'2026-05-12'},
-  {cve:'CVE-2026-44004', check:'Jamf Pro API Authorization Bypass', asset:'JAMF-PROD-01', port:'8443/tcp', severity:'High', state:'Fixed', kev:false, firstSeen:'2026-05-20'},
+  {cve:'CVE-2026-44004', check:'macOS MDM API Authorization Bypass', asset:'macOS MDM-PROD-01', port:'8443/tcp', severity:'High', state:'Fixed', kev:false, firstSeen:'2026-05-20'},
   {cve:'CVE-2026-45005', check:'Microsoft 365 macOS Sandbox Escape', asset:'MAC-FIN-07', port:'0/tcp', severity:'High', state:'Active', kev:false, firstSeen:'2026-05-28'},
   {cve:'CVE-2026-45005', check:'MS365 App Sandbox Audit (macOS)', asset:'MAC-LEGAL-01', port:'0/tcp', severity:'High', state:'Actioned', kev:false, firstSeen:'2026-05-29'},
   {cve:'CVE-2026-09876', check:'OpenSSL X.509 Parsing — Remediation Pending', asset:'DB-PROD-01', port:'5432/tcp', severity:'Medium', state:'Actioned', kev:false, firstSeen:'2025-12-01'},
@@ -2808,8 +2808,8 @@ function findColIdx(header, names) {
   return -1;
 }
 
-// ===== PARSE TENABLE CSV =====
-function parseTenableCSV(rows) {
+// ===== PARSE VULNERABILITY-SCANNER CSV =====
+function parseVulnerability ScannerCSV(rows) {
   if (rows.length < 2) return [];
   const header = rows[0];
   const idx = {
@@ -3359,11 +3359,11 @@ function handleFileSelect(event, type) {
       updateImportStatus(type, file.name, 0, 'error');
       return;
     }
-    if (type === 'tenable') {
+    if (type === 'vulnerability-scanner') {
       // Save snapshot before importing new findings
       saveFindingsSnapshot();
 
-      const newFindings = parseTenableCSV(rows);
+      const newFindings = parseVulnerability ScannerCSV(rows);
 
       // Compute diff before replacing
       const prior = importedFindings || [];
@@ -3414,9 +3414,9 @@ function handleFileSelect(event, type) {
 }
 
 function updateImportStatus(type, fileName, count, status) {
-  const el = document.getElementById(type === 'tenable' ? 'statusTenable' : 'statusSCCM');
+  const el = document.getElementById(type === 'vulnerability-scanner' ? 'statusVulnerability Scanner' : 'statusSCCM');
   if (!el) return;
-  const label = type === 'tenable' ? 'Vulnerability Findings' : 'Device Assets';
+  const label = type === 'vulnerability-scanner' ? 'Vulnerability Findings' : 'Device Assets';
   const icon = status === 'ok' ? '✅' : '⚠️';
   el.innerHTML = `<div class="import-status-card">
     <div class="status-row">
@@ -3429,12 +3429,12 @@ function updateImportStatus(type, fileName, count, status) {
 }
 
 function clearImport(type) {
-  if (type === 'tenable') {
+  if (type === 'vulnerability-scanner') {
     importedFindings = null;
     enrichedFindings = null;
     shieldStorageRemove(KEYS.IMPORTED_FINDINGS);
     shieldStorageRemove(KEYS.IMPORTED_FINDINGS_META);
-    document.getElementById('statusTenable').innerHTML = '';
+    document.getElementById('statusVulnerability Scanner').innerHTML = '';
   } else {
     importedAssets = null;
     enrichedFindings = null;
@@ -3502,7 +3502,7 @@ function setViewMode(mode, btn) {
 
 // ===== SETUP PAGE DROP ZONES =====
 function initDropZones() {
-  ['dropTenable', 'dropSCCM'].forEach(id => {
+  ['dropVulnerability Scanner', 'dropSCCM'].forEach(id => {
     const zone = document.getElementById(id);
     if (!zone) return;
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
@@ -3512,8 +3512,8 @@ function initDropZones() {
       zone.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
       if (!file || !file.name.endsWith('.csv')) { showToast('⚠ Please drop a .csv file'); return; }
-      const type = id === 'dropTenable' ? 'tenable' : 'sccm';
-      const inputEl = document.getElementById(type === 'tenable' ? 'fileTenable' : 'fileSCCM');
+      const type = id === 'dropVulnerability Scanner' ? 'vulnerability-scanner' : 'sccm';
+      const inputEl = document.getElementById(type === 'vulnerability-scanner' ? 'fileVulnerability Scanner' : 'fileSCCM');
       // Create a new DataTransfer to set the file
       const dt = new DataTransfer();
       dt.items.add(file);
@@ -3529,7 +3529,7 @@ function renderSetupPage() {
   // Restore status displays
   if (importedFindings) {
     const metaF = JSON.parse(shieldStorageGet(KEYS.IMPORTED_FINDINGS_META) || '{}');
-    updateImportStatus('tenable', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
+    updateImportStatus('vulnerability-scanner', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
   }
   if (importedAssets) {
     const metaA = JSON.parse(shieldStorageGet(KEYS.IMPORTED_ASSETS_META) || '{}');
@@ -4580,7 +4580,7 @@ function renderTeamDetail() {
             else if (c.includes('macos kernel') || c.includes('iokit')) n = 'macOS Kernel';
             else if (c.includes('gatekeeper') || c.includes('xprotect')) n = 'macOS Gatekeeper';
             else if (c.includes('365') || c.includes('ms365') || c.includes('office for mac')) n = 'Microsoft 365';
-            else if (c.includes('jamf')) n = 'Jamf Pro';
+            else if (c.includes('macOS MDM')) n = 'macOS MDM';
             if (!pkg[n]) pkg[n] = {f:0,a:new Set(),cr:0,hi:0,k:false,t:''};
             pkg[n].f++; pkg[n].a.add(f.asset);
             if (f.severity === 'Critical') pkg[n].cr++;
@@ -4625,26 +4625,26 @@ function renderCVEDetail(cveId) {
   if (!c) return;
   const page = document.getElementById('page-cve-detail');
   const allFindings = getActiveFindings();
-  // Find first finding with Tenable solution/description data for this CVE
-  const tenableFinding = allFindings.find(f => f.cve === cveId && (f.solution || f.description || f.synopsis));
-  const tenableSolution = tenableFinding?.solution || '';
-  const tenableDesc = tenableFinding?.description || '';
-  const tenableSynopsis = tenableFinding?.synopsis || '';
+  // Find first finding with Vulnerability Scanner solution/description data for this CVE
+  const vulnerability-scannerFinding = allFindings.find(f => f.cve === cveId && (f.solution || f.description || f.synopsis));
+  const vulnerability-scannerSolution = vulnerability-scannerFinding?.solution || '';
+  const vulnerability-scannerDesc = vulnerability-scannerFinding?.description || '';
+  const vulnerability-scannerSynopsis = vulnerability-scannerFinding?.synopsis || '';
   // Highlight KB patterns like KB5012345
   const highlightKB = (text) => text.replace(/(KB\d{4,})/g, '<code class="mono" style="background:var(--accent);color:#fff;padding:1px 6px;border-radius:3px;font-size:12px">$1</code>');
-  const solutionHTML = tenableSolution ? `
+  const solutionHTML = vulnerability-scannerSolution ? `
     <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--success)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <strong style="font-size:13px">🛡️ Tenable Solution:</strong>
-        <button class="btn btn-sm" onclick="copySolution(this)" data-solution="${tenableSolution.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" style="font-size:11px;padding:2px 8px">📋 Copy Solution</button>
+        <strong style="font-size:13px">🛡️ Vulnerability Scanner Solution:</strong>
+        <button class="btn btn-sm" onclick="copySolution(this)" data-solution="${vulnerability-scannerSolution.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" style="font-size:11px;padding:2px 8px">📋 Copy Solution</button>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">${highlightKB(tenableSolution)}</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">${highlightKB(vulnerability-scannerSolution)}</p>
     </div>` : '';
-  const descHTML = (tenableSynopsis || tenableDesc) ? `
+  const descHTML = (vulnerability-scannerSynopsis || vulnerability-scannerDesc) ? `
     <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--info)">
       <strong style="font-size:13px">📝 Scanner Details:</strong>
-      ${tenableSynopsis ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Synopsis:</strong> ${tenableSynopsis}</p>` : ''}
-      ${tenableDesc ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Description:</strong> ${tenableDesc}</p>` : ''}
+      ${vulnerability-scannerSynopsis ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Synopsis:</strong> ${vulnerability-scannerSynopsis}</p>` : ''}
+      ${vulnerability-scannerDesc ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Description:</strong> ${vulnerability-scannerDesc}</p>` : ''}
     </div>` : '';
 
   page.innerHTML = `
@@ -4720,7 +4720,7 @@ function renderCVEDetail(cveId) {
         const trailHTML2 = trail2 ? '<tr id="'+fid2+'-trail" style="display:none;background:var(--bg-elevated)"><td colspan="7" style="padding:8px 14px"><div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">📋 Audit Trail ('+trail2.length+' event'+(trail2.length!==1?'s':'')+')</div>'+trail2.map(t=>'<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid var(--border)"><span class="mono" style="font-size:10px;min-width:130px;color:var(--text-muted)">'+(t.timestamp||'').slice(0,16).replace('T',' ')+'</span><span style="font-size:11px;min-width:70px;color:var(--accent)">'+(t.source==='thevalidator'?'🗸 TheValidator':t.source==='manual'?'✎ Manual':t.source||'—')+'</span><span style="font-size:11px;color:var(--text-secondary)">'+(t.reason||'')+'</span><span style="font-size:10px;color:var(--text-muted);margin-left:auto">'+(t.fromState||'')+' → '+(t.toState||'')+'</span></div>').join('')+'</td></tr>' : '';
         const expandBtn2 = trail2 ? '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();toggleAuditTrail(\''+fid2+'\')" style="font-size:11px;padding:2px 6px" title="Toggle audit trail">📋</button>' : '';
         const fixedDate = f.fixedAt ? f.fixedAt.slice(0,10) : ('2026-06-'+(15+Math.floor(Math.random()*12)));
-        const verifiedBy = f.verifiedByTool || (f.asset.includes('EXEC')?'agarcia':f.asset.includes('EXCH')?'jsmith':f.asset.includes('JAMF')?'agarcia':'manual');
+        const verifiedBy = f.verifiedByTool || (f.asset.includes('EXEC')?'agarcia':f.asset.includes('EXCH')?'jsmith':f.asset.includes('macOS MDM')?'agarcia':'manual');
         return '<tr id="'+fid2+'"><td class="mono text-link">'+f.asset+'</td><td>'+f.check+'</td><td class="mono">'+f.port+'</td><td><span class="badge badge-'+f.severity.toLowerCase()+'">'+f.severity+'</span></td><td style="font-size:12px;color:var(--success)">'+fixedDate+'</td><td style="font-size:12px;color:var(--text-muted)">'+verifiedBy+'</td><td>'+expandBtn2+'</td></tr>'+trailHTML2;
       }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No resolved findings</td></tr>'}</tbody></table>
     </div>`;
@@ -5385,7 +5385,7 @@ function renderVendorPage(family, plugin) {
     if (c.includes('node')) return 'Node.js';
     if (c.includes('vmware') || c.includes('vcenter')) return 'VMware';
     if (c.includes('cisco') || c.includes('ios xe')) return 'Cisco';
-    if (c.includes('safari') || c.includes('webkit') || c.includes('macos') || c.includes('gatekeeper') || c.includes('xprotect') || c.includes('iokit') || c.includes('365') || c.includes('ms365') || c.includes('office for mac') || c.includes('jamf')) return 'Apple Ecosystem';
+    if (c.includes('safari') || c.includes('webkit') || c.includes('macos') || c.includes('gatekeeper') || c.includes('xprotect') || c.includes('iokit') || c.includes('365') || c.includes('ms365') || c.includes('office for mac') || c.includes('macOS MDM')) return 'Apple Ecosystem';
     return 'Other';
   }
 
@@ -6369,7 +6369,7 @@ setInterval(drainVerifiedQueue, 30000);
 checkExceptionExpiry();
 setInterval(checkExceptionExpiry, 60000);
 console.log('ShieldView v7.2 ready — Snipe-IT API asset import, Live CISA KEV feed, Expiring Risk Acceptances with structured exceptions, executive page: team assignment, trend chart, risk score, exec export');
-console.log('Features: Tenable CSV, SCCM/PDQ CSV, Snipe-IT REST API, Live CISA KEV JSON, view toggle, role/OU/user/EOL/warranty filters, EOL tracking');
+console.log('Features: Vulnerability Scanner CSV, SCCM/PDQ CSV, Snipe-IT REST API, Live CISA KEV JSON, view toggle, role/OU/user/EOL/warranty filters, EOL tracking');
 console.log('Keyboard: Ctrl+\\ toggle sidebar, Esc close modal');
 
 // Cross-tool bridge — show pending count in sidebar
