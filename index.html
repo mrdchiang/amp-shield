@@ -3644,7 +3644,7 @@ function viewCVE(cveId) { navigateTo('cve-detail'); setTimeout(() => renderCVEDe
 function viewAsset(name) { selectedAsset = name; navigateTo('asset-detail'); }
 
 // ===== NAVIGATION =====
-const pageTitles = {
+var pageTitles = {
   'dashboard': 'Dashboard',
   'executive': 'Executive',
   'cve-detail': 'CVE Detail',
