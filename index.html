@@ -5413,12 +5413,13 @@ function renderVendorPage(family, plugin) {
 
   const entries = Object.entries(families).sort((a,b) => b[1].count - a[1].count);
   const topEntries = entries.slice(0, 7);
-  const otherCount = entries.slice(7).reduce((s,e) => s + e[1].count, 0);
+  // Aggregate rest, but exclude any entry already named "Other" to avoid duplicates
+  const otherCount = entries.slice(7).filter(([name]) => name !== 'Other').reduce((s,e) => s + e[1].count, 0);
 
   // Donut SVG
   const cx=90, cy=90, r=65, circ=2*Math.PI*r;
   let cumulative = 0;
-  const slices = [...topEntries, ...(otherCount > 0 ? [['Other', {count:otherCount, assets:new Set(), kev:false, crit:0}]] : [])];
+  const slices = [...topEntries, ...(otherCount > 0 ? [['+ Others', {count:otherCount, assets:new Set(), kev:false, crit:0, high:0, med:0, low:0}]] : [])];
   const totalSlices = slices.reduce((s,e) => s + e[1].count, 0);
 
   let svgSlices = '';
@@ -5440,7 +5441,7 @@ function renderVendorPage(family, plugin) {
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
       ${backBtn}
       <span style="font-size:18px;font-weight:700">${title}</span>
-      <span style="font-size:12px;color:var(--text-muted)">${totalSlices} findings</span>
+      <span style="font-size:12px;color:var(--text-muted)">${active.length} findings</span>
     </div>
     <div class="cols">
       <div class="card" style="display:flex;align-items:center;justify-content:center">
