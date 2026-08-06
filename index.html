@@ -1481,13 +1481,13 @@ select.input { cursor: pointer; }
               <span class="card-title">📄 Vulnerability Scanner Import</span>
               <span class="badge badge-info">CSV Import</span>
             </div>
-            <div class="drop-zone" id="dropVulnerability Scanner" onclick="document.getElementById('fileVulnerability Scanner').click()">
+            <div class="drop-zone" id="dropScanner" onclick="document.getElementById('fileScanner').click()">
               <div class="drop-icon">📥</div>
               <div class="drop-text">Drop Vulnerability Scanner .csv export here</div>
               <div class="drop-sub">or click to browse — .csv files only</div>
             </div>
-            <input type="file" accept=".csv" class="file-input-hidden" id="fileVulnerability Scanner" onchange="handleFileSelect(event,'vulnerability-scanner')">
-            <div id="statusVulnerability Scanner"></div>
+            <input type="file" accept=".csv" class="file-input-hidden" id="fileScanner" onchange="handleFileSelect(event,'scanner')">
+            <div id="statusScanner"></div>
           </div>
 
           <!-- SCCM/PDQ Import -->
@@ -2809,7 +2809,7 @@ function findColIdx(header, names) {
 }
 
 // ===== PARSE VULNERABILITY-SCANNER CSV =====
-function parseVulnerability ScannerCSV(rows) {
+function parseScannerCSV(rows) {
   if (rows.length < 2) return [];
   const header = rows[0];
   const idx = {
@@ -3359,11 +3359,11 @@ function handleFileSelect(event, type) {
       updateImportStatus(type, file.name, 0, 'error');
       return;
     }
-    if (type === 'vulnerability-scanner') {
+    if (type === 'scanner') {
       // Save snapshot before importing new findings
       saveFindingsSnapshot();
 
-      const newFindings = parseVulnerability ScannerCSV(rows);
+      const newFindings = parseScannerCSV(rows);
 
       // Compute diff before replacing
       const prior = importedFindings || [];
@@ -3414,9 +3414,9 @@ function handleFileSelect(event, type) {
 }
 
 function updateImportStatus(type, fileName, count, status) {
-  const el = document.getElementById(type === 'vulnerability-scanner' ? 'statusVulnerability Scanner' : 'statusSCCM');
+  const el = document.getElementById(type === 'scanner' ? 'statusScanner' : 'statusSCCM');
   if (!el) return;
-  const label = type === 'vulnerability-scanner' ? 'Vulnerability Findings' : 'Device Assets';
+  const label = type === 'scanner' ? 'Vulnerability Findings' : 'Device Assets';
   const icon = status === 'ok' ? '✅' : '⚠️';
   el.innerHTML = `<div class="import-status-card">
     <div class="status-row">
@@ -3429,12 +3429,12 @@ function updateImportStatus(type, fileName, count, status) {
 }
 
 function clearImport(type) {
-  if (type === 'vulnerability-scanner') {
+  if (type === 'scanner') {
     importedFindings = null;
     enrichedFindings = null;
     shieldStorageRemove(KEYS.IMPORTED_FINDINGS);
     shieldStorageRemove(KEYS.IMPORTED_FINDINGS_META);
-    document.getElementById('statusVulnerability Scanner').innerHTML = '';
+    document.getElementById('statusScanner').innerHTML = '';
   } else {
     importedAssets = null;
     enrichedFindings = null;
@@ -3502,7 +3502,7 @@ function setViewMode(mode, btn) {
 
 // ===== SETUP PAGE DROP ZONES =====
 function initDropZones() {
-  ['dropVulnerability Scanner', 'dropSCCM'].forEach(id => {
+  ['dropScanner', 'dropSCCM'].forEach(id => {
     const zone = document.getElementById(id);
     if (!zone) return;
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
@@ -3512,8 +3512,8 @@ function initDropZones() {
       zone.classList.remove('drag-over');
       const file = e.dataTransfer.files[0];
       if (!file || !file.name.endsWith('.csv')) { showToast('⚠ Please drop a .csv file'); return; }
-      const type = id === 'dropVulnerability Scanner' ? 'vulnerability-scanner' : 'sccm';
-      const inputEl = document.getElementById(type === 'vulnerability-scanner' ? 'fileVulnerability Scanner' : 'fileSCCM');
+      const type = id === 'dropScanner' ? 'scanner' : 'sccm';
+      const inputEl = document.getElementById(type === 'scanner' ? 'fileScanner' : 'fileSCCM');
       // Create a new DataTransfer to set the file
       const dt = new DataTransfer();
       dt.items.add(file);
@@ -3529,7 +3529,7 @@ function renderSetupPage() {
   // Restore status displays
   if (importedFindings) {
     const metaF = JSON.parse(shieldStorageGet(KEYS.IMPORTED_FINDINGS_META) || '{}');
-    updateImportStatus('vulnerability-scanner', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
+    updateImportStatus('scanner', metaF.fileName || 'import.csv', importedFindings.length, 'ok');
   }
   if (importedAssets) {
     const metaA = JSON.parse(shieldStorageGet(KEYS.IMPORTED_ASSETS_META) || '{}');
@@ -4626,25 +4626,25 @@ function renderCVEDetail(cveId) {
   const page = document.getElementById('page-cve-detail');
   const allFindings = getActiveFindings();
   // Find first finding with Vulnerability Scanner solution/description data for this CVE
-  const vulnerability-scannerFinding = allFindings.find(f => f.cve === cveId && (f.solution || f.description || f.synopsis));
-  const vulnerability-scannerSolution = vulnerability-scannerFinding?.solution || '';
-  const vulnerability-scannerDesc = vulnerability-scannerFinding?.description || '';
-  const vulnerability-scannerSynopsis = vulnerability-scannerFinding?.synopsis || '';
+  const scannerFinding = allFindings.find(f => f.cve === cveId && (f.solution || f.description || f.synopsis));
+  const scannerSolution = scannerFinding?.solution || '';
+  const scannerDesc = scannerFinding?.description || '';
+  const scannerSynopsis = scannerFinding?.synopsis || '';
   // Highlight KB patterns like KB5012345
   const highlightKB = (text) => text.replace(/(KB\d{4,})/g, '<code class="mono" style="background:var(--accent);color:#fff;padding:1px 6px;border-radius:3px;font-size:12px">$1</code>');
-  const solutionHTML = vulnerability-scannerSolution ? `
+  const solutionHTML = scannerSolution ? `
     <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--success)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <strong style="font-size:13px">🛡️ Vulnerability Scanner Solution:</strong>
-        <button class="btn btn-sm" onclick="copySolution(this)" data-solution="${vulnerability-scannerSolution.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" style="font-size:11px;padding:2px 8px">📋 Copy Solution</button>
+        <button class="btn btn-sm" onclick="copySolution(this)" data-solution="${scannerSolution.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}" style="font-size:11px;padding:2px 8px">📋 Copy Solution</button>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">${highlightKB(vulnerability-scannerSolution)}</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap">${highlightKB(scannerSolution)}</p>
     </div>` : '';
-  const descHTML = (vulnerability-scannerSynopsis || vulnerability-scannerDesc) ? `
+  const descHTML = (scannerSynopsis || scannerDesc) ? `
     <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);border-left:3px solid var(--info)">
       <strong style="font-size:13px">📝 Scanner Details:</strong>
-      ${vulnerability-scannerSynopsis ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Synopsis:</strong> ${vulnerability-scannerSynopsis}</p>` : ''}
-      ${vulnerability-scannerDesc ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Description:</strong> ${vulnerability-scannerDesc}</p>` : ''}
+      ${scannerSynopsis ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Synopsis:</strong> ${scannerSynopsis}</p>` : ''}
+      ${scannerDesc ? `<p style="font-size:13px;color:var(--text-secondary);margin-top:4px;white-space:pre-wrap"><strong>Description:</strong> ${scannerDesc}</p>` : ''}
     </div>` : '';
 
   page.innerHTML = `
